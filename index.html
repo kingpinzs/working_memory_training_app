@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Working Memory Lab</title>
+<style>
+  :root{
+    --bg:#0b0f14; --card:#121822; --ink:#e8f0ff; --muted:#9db0cc;
+    --brand:#6ad3ff; --accent:#7cf6a4; --warn:#ffcc66; --err:#ff768b;
+    --ok:#63f5b4; --line:#243043; --btn:#1c2432; --btn-hi:#233045; --focus:#3a66ff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0; font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,Noto Sans; color:var(--ink);
+    background:linear-gradient(180deg,#0a0e13 0%, #0b1220 100%) fixed;}
+  header{position:sticky; top:0; z-index:5; background:rgba(11,15,20,.8); backdrop-filter: blur(10px); border-bottom:1px solid var(--line);}
+  .wrap{max-width:1100px; margin:0 auto; padding:16px;}
+  .flex{display:flex; gap:12px; flex-wrap:wrap; align-items:center}
+  h1{font-size:20px; margin:0}
+  .pill{display:inline-flex; align-items:center; padding:10px 14px; border-radius:999px; border:1px solid var(--line);
+    background:var(--btn); color:var(--ink); cursor:pointer; user-select:none}
+  .pill[aria-selected="true"]{background:var(--btn-hi); border-color:#3a4a66}
+  main{padding:16px}
+  .grid{display:grid; gap:16px}
+  @media (min-width:980px){ .grid{grid-template-columns:1.2fr .8fr} }
+  .card{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; box-shadow:0 10px 20px rgba(0,0,0,.25)}
+  h2{margin:0 0 12px 0; font-size:16px}
+  .muted{color:var(--muted)}
+  .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+  button,.btn{background:var(--btn); color:var(--ink); border:1px solid var(--line); border-radius:10px; padding:10px 14px; cursor:pointer}
+  button:hover,.btn:hover{background:var(--btn-hi)}
+  button.primary{background:linear-gradient(180deg,#1e2a42,#26405e); border-color:#3b5377}
+  .kbd{font-family:ui-monospace,Menlo,Consolas,monospace; background:#0d1420; border:1px solid #1f2a3d; padding:2px 6px; border-radius:6px}
+  .stack{display:flex; flex-direction:column; gap:10px}
+  .center{display:flex; align-items:center; justify-content:center}
+  .big{font-size:22px}
+  .ok{color:var(--ok)} .warn{color:var(--warn)} .err{color:var(--err)}
+  .split{display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .tag{display:inline-block; padding:4px 8px; border:1px solid var(--line); border-radius:999px; color:var(--muted)}
+  .scoreline{display:flex; justify-content:space-between; border-bottom:1px dashed #22304a; padding:6px 0}
+  .mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+  .caps{letter-spacing:.04em; text-transform:uppercase; font-weight:600; color:#b6c9e8}
+  .sep{height:1px; background:var(--line); margin:8px 0}
+  .note{padding:10px; background:#0f1522; border:1px solid #1f2c45; border-radius:10px}
+  /* Triangle board */
+  .pyramid{width:240px; height:210px; position:relative; margin:8px auto;}
+  .tri{position:absolute; width:0; height:0; border-left:60px solid transparent; border-right:60px solid transparent; border-bottom:100px solid #1c2b44; filter:drop-shadow(0 3px 4px rgba(0,0,0,.5)); cursor:pointer; opacity:.85}
+  .tri:hover{filter:brightness(1.2)}
+  .tri[data-pos="top"]{left:60px; top:0}
+  .tri[data-pos="left"]{left:0; top:90px}
+  .tri[data-pos="right"]{left:120px; top:90px}
+  .tri.mark{border-bottom-color:#3b6df0}
+  .tri.correct{border-bottom-color:#2bb673}
+  .tri.wrong{border-bottom-color:#c24}
+  .letterBubble{margin:8px auto; width:46px; height:46px; border-radius:50%; background:#1a2336; border:1px solid #2a3b5e; display:flex; align-items:center; justify-content:center; font-size:20px; font-weight:700}
+  .photoBox{height:110px; display:flex; align-items:center; justify-content:center; border:1px solid #23324a; border-radius:10px; background:#0f1725; font-weight:700; letter-spacing:.5px}
+  .wordBank{display:flex; gap:8px; flex-wrap:wrap}
+  .chip{padding:8px 10px; border:1px solid #31435f; background:#142034; border-radius:8px; cursor:pointer; user-select:none}
+  .chip.good{outline:2px solid #35bf88} .chip.bad{outline:2px solid #d0657a}
+  .timer{font-variant-numeric:tabular-nums}
+  .hidden{display:none !important}
+  .tight{margin:-4px 0 -2px}
+  .switch{display:inline-flex; align-items:center; gap:8px}
+  .switch input{appearance:none; width:40px; height:22px; border-radius:999px; background:#2a3954; position:relative; outline:none; cursor:pointer; border:1px solid #31435f}
+  .switch input:checked{background:#2f6a4f}
+  .switch input::after{content:''; position:absolute; top:2px; left:2px; width:18px; height:18px; background:#dfe9ff; border-radius:50%; transition:transform .2s}
+  .switch input:checked::after{transform:translateX(18px)}
+  canvas{width:100%; height:180px; background:#0f1725; border:1px solid #23324a; border-radius:10px}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap flex">
+    <h1>Working Memory Lab</h1>
+    <nav class="flex" role="tablist" aria-label="Modes">
+      <div class="pill" role="tab" aria-selected="true" data-tab="assess">Assess</div>
+      <div class="pill" role="tab" aria-selected="false" data-tab="train">Train</div>
+      <div class="pill" role="tab" aria-selected="false" data-tab="coach">Coach</div>
+      <div class="pill" role="tab" aria-selected="false" data-tab="progress">Progress</div>
+    </nav>
+    <div class="muted" style="margin-left:auto">All data stays local • No tracking</div>
+  </div>
+</header>
+
+<main class="wrap grid">
+  <section id="stage" class="card stack">
+    <h2 class="caps">Stage</h2>
+    <div id="screen"></div>
+  </section>
+
+  <aside class="stack">
+    <div class="card stack">
+      <h2 class="caps">Launchpad</h2>
+      <div class="row" title="Adaptive difficulty across tasks">
+        <label class="switch">
+          <input id="coachToggle" type="checkbox">
+        </label>
+        <div><b>Coach Mode</b> <span class="muted">adaptive session</span></div>
+      </div>
+      <div class="sep"></div>
+      <div class="stack">
+        <div class="caps tight">Assessments</div>
+        <div class="split">
+          <button class="primary" data-run="span">WM Span (reverse)</button>
+          <button class="primary" data-run="spatial">Spatial+Verbal Bind</button>
+          <button data-run="nback">1-Back / 2-Back (emotion)</button>
+        </div>
+        <div class="caps tight">Drills</div>
+        <div class="split">
+          <button data-run="filterPos">Filter the Positive</button>
+          <button data-run="mult">Mental Multiplication</button>
+        </div>
+        <div class="caps tight">Programs</div>
+        <div class="split">
+          <button id="coachSession">Run Coach Session</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 class="caps">Scoreboard</h2>
+      <div id="scores" class="stack"></div>
+      <div class="sep"></div>
+      <div class="row">
+        <button id="exportCsv">Export CSV</button>
+        <button id="resetScores">Reset scores</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 class="caps">UX Tips</h2>
+      <div class="note">
+        <div>• Keyboard: <span class="kbd">Enter</span> submit, <span class="kbd">Esc</span> pause/back.</div>
+        <div>• Optimal session: 8–15 min focused, then a short break.</div>
+      </div>
+    </div>
+  </aside>
+</main>
+
+<script>
+/* ---------- Infra & persistence ---------- */
+const $ = s => document.querySelector(s);
+const screen = $('#screen');
+
+const store = {
+  get(){ try{ return JSON.parse(localStorage.getItem('wmLab')||'{}'); }catch{ return {}; } },
+  set(data){ localStorage.setItem('wmLab', JSON.stringify(data)); },
+  push(key, entry){
+    const s = store.get();
+    s[key] = s[key]||[];
+    // enrich: ensure ts and type key for CSV, include numeric KPIs if provided
+    s[key].push({...entry, type:key, ts: entry.ts ?? Date.now()});
+    store.set(s);
+    renderScores();
+  },
+  reset(){ localStorage.removeItem('wmLab'); renderScores(); }
+};
+
+const prefs = {
+  get(){ try{ return JSON.parse(localStorage.getItem('wmLabPrefs')||'{}'); }catch{ return {}; } },
+  set(p){ localStorage.setItem('wmLabPrefs', JSON.stringify(p)); }
+};
+
+$('#resetScores').onclick = () => store.reset();
+$('#exportCsv').onclick = exportCsv;
+
+/* ---------- Tabs ---------- */
+document.querySelectorAll('[role="tab"]').forEach(tab=>{
+  tab.onclick = () => {
+    document.querySelectorAll('[role="tab"]').forEach(t=>t.setAttribute('aria-selected','false'));
+    tab.setAttribute('aria-selected','true');
+    const t = tab.dataset.tab;
+    if (t==='assess') drawHome();
+    if (t==='train') drawTrain();
+    if (t==='coach') drawCoach();
+    if (t==='progress') drawProgress();
+  };
+});
+
+function drawHome(){
+  screen.innerHTML = `
+    <div class="stack">
+      <div class="note">
+        <div class="caps">Assessments</div>
+        <ul>
+          <li><b>WM Span (reverse):</b> see items, repeat in reverse order.</li>
+          <li><b>Spatial+Verbal Bind:</b> remember triangle positions while judging picture initials.</li>
+          <li><b>N-Back (emotion):</b> spacebar on ${coachOn()?'adaptive':'1/2'}-back matches.</li>
+        </ul>
+      </div>
+      <div class="note">
+        <div class="caps">Drills</div>
+        <ul>
+          <li><b>Filter the Positive:</b> click only positive words quickly & accurately.</li>
+          <li><b>Mental Multiplication:</b> left→right rolling sum.</li>
+        </ul>
+      </div>
+    </div>`;
+}
+function drawTrain(){
+  screen.innerHTML = `
+    <div class="stack">
+      <div class="card stack">
+        <div class="caps">Suggested Protocol</div>
+        <ol>
+          <li>Warm-up: Filter-Positive (1–2 mins)</li>
+          <li>Core: N-Back (adaptive if Coach Mode on)</li>
+          <li>Bind: Spatial+Verbal (3 short trials)</li>
+          <li>Math finisher: Mental Multiplication</li>
+        </ol>
+        <div class="row">
+          <button data-run="filterPos">Start Warm-up</button>
+          <button data-run="nback">Start N-Back</button>
+          <button id="coachSession2">Run Coach Session</button>
+        </div>
+      </div>
+      <div class="note">Tip: Adults typically juggle ~4–5 items; keep pushes progressive.</div>
+    </div>`;
+  $('#coachSession2').onclick = runCoachSession;
+}
+function drawCoach(){
+  screen.innerHTML = `
+    <div class="stack">
+      <div class="card stack">
+        <div class="caps">Coach Mode Playbook</div>
+        <ul>
+          <li><b>Gate 1 (Warm-up):</b> Filter-Positive → require ≥90% accuracy in ≤25s to advance intensity next block.</li>
+          <li><b>Gate 2 (N-Back):</b> If last 1-back acc ≥85% and FA ≤2 → promote to 2-back; else remain 1-back.</li>
+          <li><b>Gate 3 (Bind):</b> Clear level only if verbal checks perfect and order correct; else repeat level.</li>
+          <li><b>Finisher:</b> Mental Mult target ≥70% correct; reuse missed patterns in next session.</li>
+        </ul>
+      </div>
+    </div>`;
+}
+function drawProgress(){
+  const s = store.get();
+  const recent = (key) => (s[key]||[]).slice(-10);
+  screen.innerHTML = `
+    <div class="stack">
+      <div class="card stack">
+        <div class="caps">Trendlines (last 10)</div>
+        <canvas id="chart1" width="600" height="180"></canvas>
+        <div class="muted">• WM Span (level) • N-Back (accuracy %) • Filter-Positive (accuracy %) • Mult (correct%)</div>
+      </div>
+      <div class="card stack">
+        <div class="caps">Recent Runs</div>
+        <div id="runs"></div>
+      </div>
+    </div>`;
+  // Build series
+  const spanLv = recent('span').map(r=> r.bestLevel ?? r.level ?? parseSpanFromScore(r.scoreStr));
+  const nbackAcc = recent('nback').map(r=> r.acc2 ?? r.acc1 ?? parseNAcc(r.scoreStr));
+  const filterAcc = recent('filterPos').map(r=> r.acc ?? parseFilterAcc(r.scoreStr));
+  const multAcc = recent('mult').map(r=> r.acc ?? parseMultAcc(r.scoreStr));
+  drawMiniChart($('#chart1'), [
+    {name:'Span L', data: spanLv, min:0, max:5},
+    {name:'NBack %', data: nbackAcc, min:0, max:100},
+    {name:'Filter %', data: filterAcc, min:0, max:100},
+    {name:'Mult %', data: multAcc, min:0, max:100},
+  ]);
+  // Runs list
+  const runs = Object.entries(s)
+    .flatMap(([k,arr])=>arr.map(x=>x))
+    .sort((a,b)=>a.ts-b.ts)
+    .slice(-20)
+    .reverse();
+  const fmt = new Intl.DateTimeFormat([], {month:'short', day:'2-digit', hour:'2-digit', minute:'2-digit'});
+  const box = $('#runs');
+  box.innerHTML = runs.map(r=>`
+    <div class="scoreline mono">
+      <span>${(r.type||'').toUpperCase()}</span>
+      <span>${(r.scoreStr||'')} · ${fmt.format(r.ts)}</span>
+    </div>`).join('');
+}
+drawHome();
+
+/* ---------- Scores sidebar ---------- */
+function renderScores(){
+  const s = store.get();
+  const box = $('#scores');
+  const keyMeta = { span:'WM Span', spatial:'Spatial+Verbal', nback:'N-Back', filterPos:'Filter Positive', mult:'Mental Mult' };
+  const fmt = new Intl.DateTimeFormat([], {month:'short', day:'2-digit', hour:'2-digit', minute:'2-digit'});
+  box.innerHTML = '';
+  Object.keys(keyMeta).forEach(k=>{
+    const rows = (s[k]||[]).slice(-5).reverse();
+    if (!rows.length) return;
+    const wrap = document.createElement('div');
+    wrap.className = 'stack';
+    wrap.innerHTML = `<div class="caps">${keyMeta[k]}</div>`;
+    rows.forEach(r=>{
+      const div = document.createElement('div');
+      div.className = 'scoreline mono';
+      const left = r.label ?? (r.level ? `L${r.level}` : '');
+      const score = (r.scoreStr ?? r.correct??'') + (r.extra ? ` ${r.extra}`:'');
+      div.innerHTML = `<span>${left}</span><span>${score} · ${fmt.format(r.ts)}</span>`;
+      wrap.appendChild(div);
+    });
+    box.appendChild(wrap);
+  });
+}
+renderScores();
+
+/* ---------- Coach Mode persistence ---------- */
+const coachToggle = $('#coachToggle');
+coachToggle.checked = !!prefs.get().coachMode;
+coachToggle.onchange = ()=>{ const p=prefs.get(); p.coachMode=coachToggle.checked; prefs.set(p); toast(`Coach Mode ${coachOn()?'ON':'OFF'}`); };
+function coachOn(){ return !!prefs.get().coachMode; }
+$('#coachSession').onclick = runCoachSession;
+
+/* ---------- Data (sample lists) ---------- */
+const spanLists = { 1:["Dog","Lid"], 2:["Bun","Car","Tip"], 3:["Dab","Pig","Top","Net"] };
+const wordBank = {
+  positive:["ecstatic","thankful","friendly","sunny","bright","inspire","safe","delight","fortunate"],
+  negative:["downer","afraid","anguish","mad","guilty","coerced","dismal"],
+  neutral:["leaf","syrup","plank","camera","flower","tile","scissors","computer","lawnmower"]
+};
+const pictures = ["Apple","Boat","Cat","Dog","Sun","Tree","Fish","House","Leaf"];
+const emoHappy = ["happy","joy","glad","smile","delight"];
+const emoSad = ["sad","down","blue","teary","gloom"];
+const emoNeutral = ["chair","stone","window","paper","clock"];
+
+/* ---------- Launch actions ---------- */
+document.querySelectorAll('[data-run]').forEach(b=>{
+  b.onclick = () => {
+    const mode = b.dataset.run;
+    if (mode==='span') runSpan();
+    if (mode==='spatial') runSpatial();
+    if (mode==='nback') runNBack();
+    if (mode==='filterPos') runFilterPos();
+    if (mode==='mult') runMult();
+  };
+});
+
+/* ---------- 1) WM Span ---------- */
+async function runSpan(){
+  const levels = [1,2,3];
+  let bestLevel = 0;
+  for (const lv of levels){
+    const words = spanLists[lv];
+    const ok = await spanTrial(lv, words);
+    if (ok){ bestLevel = lv; } else break;
+  }
+  const scoreStr = `Best L${bestLevel}`;
+  store.push('span',{label:'Best level', scoreStr, bestLevel});
+  toast(`WM Span · ${scoreStr}`);
+}
+function spanTrial(level, words){
+  return new Promise(async resolve=>{
+    screen.innerHTML = `
+      <div class="stack">
+        <h2>WM Span – Level ${level}</h2>
+        <div class="muted">Remember these words. Then type them <b>in reverse order</b>.</div>
+        <div id="show" class="big center" style="min-height:80px"></div>
+        <div class="sep"></div>
+        <form id="f" class="row">
+          <input id="ans" class="mono" placeholder="type reversed list (comma/space ok)" style="flex:1;padding:10px;border-radius:8px;border:1px solid #31435f;background:#0f1720;color:var(--ink)" />
+          <button class="primary" type="submit">Submit</button>
+        </form>
+      </div>`;
+    const show = $('#show');
+    for (const w of words){ show.textContent = w; await wait(900); show.textContent = ''; await wait(250); }
+    $('#ans').focus();
+    $('#f').onsubmit = (e)=>{
+      e.preventDefault();
+      const got = $('#ans').value.trim().replace(/[, ]+/g,' ').split(' ').filter(Boolean).map(x=>x.toLowerCase());
+      const target = [...words].reverse().map(x=>x.toLowerCase());
+      const pass = arraysEqual(got, target);
+      show.innerHTML = pass ? `<span class="ok">Correct</span>` : `<span class="err">Incorrect</span> <span class="muted mono">→ ${target.join(' ')}</span>`;
+      setTimeout(()=>resolve(pass), 900);
+    };
+  });
+}
+
+/* ---------- 2) Spatial + Verbal ---------- */
+async function runSpatial(){
+  let level = 1, cleared=0;
+  const maxLevel = 3;
+  while (level<=maxLevel){
+    const ok = await spatialLevel(level);
+    if (ok){ cleared++; level++; } else break;
+  }
+  store.push('spatial',{level:level-1, cleared, scoreStr:`${cleared}/${maxLevel}`});
+  toast(`Spatial+Verbal · ${cleared}/${maxLevel}`);
+}
+function spatialLevel(level){
+  const steps = level+1; // L1=2, L2=3, L3=4
+  const seq = [];
+  const positions = ['top','left','right'];
+  for (let i=0;i<steps;i++){
+    const pos = positions[Math.floor(Math.random()*3)];
+    const letter = String.fromCharCode(65 + Math.floor(Math.random()*26));
+    const pic = pictures[Math.floor(Math.random()*pictures.length)];
+    seq.push({pos, letter, pic, match: pic[0].toUpperCase()===letter});
+  }
+  return new Promise(async resolve=>{
+    screen.innerHTML = `
+      <div class="stack">
+        <h2>Spatial + Verbal – Level ${level}</h2>
+        <div class="muted">Memorize the triangle for each letter; answer if the picture starts with it. Then recall positions in order.</div>
+        <div class="letterBubble" id="bubble">?</div>
+        <div class="photoBox" id="photo">—</div>
+        <div class="pyramid">
+          <div class="tri" data-pos="top" title="Top"></div>
+          <div class="tri" data-pos="left" title="Left"></div>
+          <div class="tri" data-pos="right" title="Right"></div>
+        </div>
+        <div class="row center">
+          <button id="yes">Picture starts with letter</button>
+          <button id="no">No</button>
+        </div>
+        <div id="phase" class="muted center">Memorize…</div>
+      </div>`;
+    const bubble = $('#bubble'), photo=$('#photo'), phase=$('#phase');
+    const tris = Array.from(document.querySelectorAll('.tri'));
+    let respOk=0;
+
+    for (const item of seq){
+      tris.forEach(t=>t.classList.remove('mark'));
+      bubble.textContent = item.letter; photo.textContent = item.pic;
+      const t = tris.find(x=>x.dataset.pos===item.pos); t.classList.add('mark');
+      await wait(1200); t.classList.remove('mark'); bubble.textContent = '…'; photo.textContent = '…';
+      phase.textContent = 'Does picture start with the letter?';
+      const ok = await yesNo(); if (ok === item.match) respOk++;
+      phase.textContent = 'Memorize…'; await wait(300);
+    }
+
+    // Recall phase
+    phase.textContent = 'Recall: click positions in order'; bubble.textContent = '↺'; photo.textContent = 'Recall';
+    let recallIdx=0; const needed = seq.map(s=>s.pos);
+    tris.forEach(t=>{ t.classList.remove('mark','wrong','correct'); t.onclick = ()=>{
+      if (recallIdx>=needed.length) return;
+      const expect = needed[recallIdx];
+      if (t.dataset.pos===expect){ t.classList.add('correct'); recallIdx++; if (recallIdx===needed.length){
+        const pass = respOk===seq.length;
+        phase.innerHTML = pass? `<span class="ok">Cleared</span>` : `<span class="warn">Order ok; verbal misses ${seq.length-respOk}</span>`;
+        setTimeout(()=>resolve(pass), 1000);
+      }} else { t.classList.add('wrong'); phase.innerHTML = `<span class="err">Wrong order</span>`; setTimeout(()=>resolve(false), 900); }
+    };});
+  });
+}
+function yesNo(){ return new Promise(res=>{ const y=$('#yes'), n=$('#no'); const onY=()=>{cleanup();res(true)}; const onN=()=>{cleanup();res(false)}; function cleanup(){ y.removeEventListener('click',onY); n.removeEventListener('click',onN);} y.addEventListener('click',onY); n.addEventListener('click',onN); }); }
+
+/* ---------- 3) N-Back ---------- */
+async function runNBack(opts={}){
+  const adaptive = coachOn();
+  if (adaptive){
+    const hist = (store.get().nback||[]).slice(-1)[0];
+    const startN = decideNFromHistory(hist);
+    const b = await blockN(startN, startN===1?50:60);
+    const acc = accPct(b.hits,b.miss,b.fa);
+    // If strong performance at 1-back, auto add a 2-back block
+    if (startN===1 && acc>=85 && b.fa<=2){
+      const b2 = await blockN(2,60);
+      finishNBack({b1:b, b2});
+    } else {
+      finishNBack(startN===1?{b1:b}:{b2:b});
+    }
+  } else {
+    const b1 = await blockN(1,45);
+    const b2 = await blockN(2,60);
+    finishNBack({b1,b2});
+  }
+}
+function decideNFromHistory(hist){
+  if (!hist) return 1;
+  const a2 = Number.isFinite(hist.acc2)? hist.acc2 : 0;
+  const a1 = Number.isFinite(hist.acc1)? hist.acc1 : parseNAcc(hist.scoreStr);
+  if (a2>=70) return 2;
+  if (a1>=85) return 2;
+  return 1;
+}
+function finishNBack({b1,b2}){
+  const scoreStr = `${b1?`1-back H/M/FA ${b1.hits}/${b1.miss}/${b1.fa}`:''}${b1&&b2?' · ':''}${b2?`2-back ${b2.hits}/${b2.miss}/${b2.fa}`:''}`;
+  const acc1 = b1? accPct(b1.hits,b1.miss,b1.fa) : undefined;
+  const acc2 = b2? accPct(b2.hits,b2.miss,b2.fa) : undefined;
+  store.push('nback',{scoreStr, acc1, acc2, fa1:b1?.fa, fa2:b2?.fa});
+  toast(`N-Back · ${scoreStr}`);
+}
+function accPct(h,m,fa){ const t=h+m+fa; return t? Math.round((h/t)*100) : 0; }
+async function blockN(n, secs=60){
+  const stream=[]; const flat=[...emoHappy,...emoSad,...emoNeutral];
+  for (let i=0;i<40;i++){ stream.push(flat[Math.floor(Math.random()*flat.length)]); }
+  for (let i=5;i<stream.length;i+=Math.floor(6+Math.random()*6)){ stream[i]=stream[i-n]??stream[i]; }
+  return new Promise(async resolve=>{
+    screen.innerHTML = `
+      <div class="stack">
+        <h2>N-Back (${n}-back) – ${secs}s</h2>
+        <div class="muted">Press <span class="kbd">Space</span> when current word matches the word ${n} back.</div>
+        <div class="center big" style="height:80px"><span id="stim">+</span></div>
+        <div class="row center">
+          <div>Hits: <b id="hits">0</b></div>
+          <div>Misses: <b id="miss">0</b></div>
+          <div>False Alarms: <b id="fa">0</b></div>
+          <div class="timer">Time: <b id="t">${secs}</b>s</div>
+        </div>
+      </div>`;
+    let i=0,hits=0,miss=0,fa=0; let canPress=true; const stim=$('#stim');
+    const tick=setInterval(()=>{ const left=parseInt($('#t').textContent,10)-1; $('#t').textContent=left; if (left<=0){ clearInterval(tick); document.onkeydown=null; finish();}},1000);
+    document.onkeydown=(e)=>{ if (e.code==='Space'&&canPress){ const target=(i>=n)&&(stream[i]===stream[i-n]); if (target) hits++; else fa++; canPress=false; $('#hits').textContent=hits; $('#fa').textContent=fa; }};
+    async function step(){
+      if (i>=stream.length){ finish(); return; }
+      stim.textContent=stream[i]; canPress=true; await wait(1300);
+      const target=(i>=n)&&(stream[i]===stream[i-n]); if (target&&canPress){ miss++; $('#miss').textContent=miss; }
+      canPress=false; i++; await wait(250); step();
+    } step();
+    function finish(){ document.onkeydown=null; clearInterval(tick);
+      resolve({hits,miss,fa,totalTargets:stream.filter((w,idx)=>idx>=n&&w===stream[idx-n]).length}); }
+  });
+}
+
+/* ---------- 4) Filter Positive ---------- */
+async function runFilterPos(){
+  const pool=[...sample(wordBank.positive,6), ...sample(wordBank.negative,5), ...sample(wordBank.neutral,5)]; shuffle(pool);
+  return new Promise(resolve=>{
+    screen.innerHTML = `
+      <div class="stack">
+        <h2>Filter the Positive</h2>
+        <div class="muted">Click only the <b>positive</b> words as fast/accurate as possible.</div>
+        <div class="row"><span class="timer">Time: <b id="t">0.0</b>s</span> <span>Accuracy: <b id="acc">100%</b></span></div>
+        <div id="bank" class="wordBank"></div>
+        <div id="done" class="muted"></div>
+      </div>`;
+    const t0=performance.now(); let clicks=0, correct=0; const bank=$('#bank');
+    pool.forEach(w=>{
+      const el=document.createElement('div'); el.className='chip'; el.textContent=w;
+      el.onclick=()=>{
+        clicks++; const isPos=wordBank.positive.includes(w);
+        if (isPos){ correct++; el.classList.add('good'); } else { el.classList.add('bad'); }
+        el.style.pointerEvents='none'; const acc = Math.round((correct/clicks)*100); $('#acc').textContent = `${acc}%`;
+        if (Array.from(bank.children).every(x=> x.classList.contains('good') || !wordBank.positive.includes(x.textContent))){
+          const secs=((performance.now()-t0)/1000).toFixed(1); $('#t').textContent=secs;
+          const accFinal = Math.round((correct/clicks)*100);
+          $('#done').innerHTML = `<span class="ok">Done:</span> ${correct}/${clicks} in <b>${secs}s</b>`;
+          store.push('filterPos',{scoreStr:`${correct}/${clicks} in ${secs}s`, acc:accFinal, time:parseFloat(secs)});
+          resolve();
+        }
+      };
+      bank.appendChild(el);
+    });
+    (function raf(){ const t=((performance.now()-t0)/1000).toFixed(1); $('#t').textContent=t; if ($('#done').textContent==='') requestAnimationFrame(raf); })();
+  });
+}
+
+/* ---------- 5) Mental Multiplication ---------- */
+async function runMult(){
+  const problems = sample(["78x4","33x5","25x8","45x3","23x34","12x24","17x55","64x70"], 6);
+  let idx=0, correct=0;
+  screen.innerHTML = `
+    <div class="stack">
+      <h2>Mental Multiplication</h2>
+      <div class="muted">Compute left→right with a rolling sum.</div>
+      <div id="q" class="big mono"></div>
+      <form id="f" class="row">
+        <input id="a" class="mono" placeholder="answer" style="flex:1;padding:10px;border-radius:8px;border:1px solid #31435f;background:#0f1720;color:var(--ink)" />
+        <button class="primary">Submit</button>
+      </form>
+      <div id="res" class="muted"></div>
+    </div>`;
+  const q=$('#q'), f=$('#f'), a=$('#a'), res=$('#res');
+  show();
+  f.onsubmit=(e)=>{
+    e.preventDefault();
+    const want=multAnswer(problems[idx]); const got=parseInt(a.value,10);
+    if (got===want){ correct++; res.innerHTML = `<span class="ok">Correct</span>`; }
+    else res.innerHTML = `<span class="err">Incorrect</span> <span class="muted">→ ${want}</span>`;
+    idx++; a.value=''; if (idx>=problems.length){
+      const acc = Math.round((correct/problems.length)*100);
+      store.push('mult',{scoreStr:`${correct}/${problems.length}`, acc});
+      toast(`Mental mult · ${correct}/${problems.length}`);
+    } else show();
+  };
+  function show(){ q.textContent = problems[idx].replace('x',' × '); a.focus(); }
+}
+function multAnswer(expr){ const [L,R]=expr.split('x').map(Number); return L*R; }
+
+/* ---------- Coach Session Orchestrator ---------- */
+async function runCoachSession(){
+  if (!coachOn()){ toast('Enable Coach Mode for adaptive flow'); return; }
+  // Warm-up
+  await runFilterPos();
+  const lastFP = (store.get().filterPos||[]).slice(-1)[0];
+  // Core N-Back: decide difficulty
+  const startN = decideNFromHistory((store.get().nback||[]).slice(-1)[0]);
+  const block1 = await blockN(startN, startN===1?50:60);
+  const acc1 = accPct(block1.hits,block1.miss,block1.fa);
+  // Promotion rule: ≥85% & ≤2 FAs at 1-back → add 2-back
+  if (startN===1 && acc1>=85 && block1.fa<=2){ const block2 = await blockN(2,60); finishNBack({b1:block1,b2:block2}); }
+  else { finishNBack(startN===1?{b1:block1}:{b2:block1}); }
+  // Bind
+  await runSpatial();
+  // Finisher
+  await runMult();
+  toast('Coach session complete');
+}
+
+/* ---------- Progress helpers & CSV ---------- */
+function exportCsv(){
+  const s = store.get();
+  const rows = [['type','label','scoreStr','bestLevel','level','cleared','acc','acc1','acc2','fa1','fa2','time','ts']];
+  Object.values(s).forEach(arr=>{
+    arr.forEach(r=>{
+      rows.push([
+        r.type||'', r.label||'', r.scoreStr||'', nv(r.bestLevel), nv(r.level), nv(r.cleared),
+        nv(r.acc), nv(r.acc1), nv(r.acc2), nv(r.fa1), nv(r.fa2), nv(r.time), r.ts||''
+      ]);
+    });
+  });
+  const csv = rows.map(r=>r.map(x=> (x===null||x===undefined)?'':String(x).includes(',')?`"${String(x).replace(/"/g,'""')}"`:String(x)).join(',')).join('\n');
+  const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'}); const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download=`wm-progress-${new Date().toISOString().slice(0,10)}.csv`; document.body.appendChild(a); a.click(); a.remove();
+}
+function nv(x){ return (x===undefined||x===null)?'':x; }
+
+function parseSpanFromScore(s){ const m=/L(\d+)/i.exec(s||''); return m? +m[1] : 0; }
+function parseNAcc(s){ // fallback: compute rough acc1 from text H/M/FA
+  const m=/1-back.*?(\d+)\/(\d+)\/(\d+)/i.exec(s||''); if(!m) return '';
+  const [_,h,mi,f]=m.map(Number); return accPct(h,mi,f);
+}
+function parseFilterAcc(s){ const m=/(\d+)\/(\d+)/.exec(s||''); if(!m) return ''; return Math.round((+m[1]/+m[2])*100); }
+function parseMultAcc(s){ const m=/(\d+)\/(\d+)/.exec(s||''); if(!m) return ''; return Math.round((+m[1]/+m[2])*100); }
+
+/* ---------- Mini chart (no deps) ---------- */
+function drawMiniChart(canvas, series){
+  const ctx = canvas.getContext('2d');
+  const W=canvas.width, H=canvas.height, pad=28;
+  ctx.clearRect(0,0,W,H);
+  // axes
+  ctx.strokeStyle='#23324a'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(pad, pad/2); ctx.lineTo(pad, H-pad); ctx.lineTo(W-pad/2, H-pad); ctx.stroke();
+  // grid
+  for(let i=0;i<4;i++){ const y=pad + i*((H-2*pad)/4); ctx.strokeStyle='#1c283f'; ctx.beginPath(); ctx.moveTo(pad,y); ctx.lineTo(W-pad/2,y); ctx.stroke(); }
+  // plot each series
+  const colors = ['#7cf6a4','#6ad3ff','#ffcc66','#ff768b','#c18bff'];
+  series.forEach((s,si)=>{
+    const d = s.data; if(!d||!d.length) return;
+    const max = (Number.isFinite(s.max)?s.max: Math.max(...d,1));
+    const min = (Number.isFinite(s.min)?s.min: Math.min(...d,0));
+    const n = d.length;
+    ctx.strokeStyle = colors[si%colors.length]; ctx.lineWidth=2; ctx.beginPath();
+    d.forEach((v,i)=>{
+      const x = pad + i*((W-2*pad)/Math.max(n-1,1));
+      const y = H-pad - ((v-min)/(max-min||1))*(H-2*pad);
+      if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+    // label
+    ctx.fillStyle = colors[si%colors.length]; ctx.font='12px system-ui,Segoe UI';
+    ctx.fillText(s.name, W - pad - 110, pad + 14*si + 6);
+  });
+}
+
+/* ---------- Utils ---------- */
+function arraysEqual(a,b){ return a.length===b.length && a.every((x,i)=>x===b[i]); }
+function wait(ms){ return new Promise(r=>setTimeout(r,ms)); }
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+function sample(arr, n){ const copy=[...arr]; shuffle(copy); return copy.slice(0,n); }
+function toast(msg){ const t=document.createElement('div'); t.textContent=msg;
+  t.style.cssText='position:fixed; bottom:18px; left:50%; transform:translateX(-50%); background:#11233a; color:#dff1ff; border:1px solid #2a3e60; padding:10px 14px; border-radius:10px; box-shadow:0 10px 20px rgba(0,0,0,.4); z-index:99';
+  document.body.appendChild(t); setTimeout(()=>{ t.remove(); }, 2000); }
+</script>
+</body>
+</html>

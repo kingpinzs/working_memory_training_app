@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Working Memory Lab</title>
+<style>
+  :root{
+    --bg:#0b0f14; --card:#121822; --ink:#e8f0ff; --muted:#9db0cc;
+    --brand:#6ad3ff; --accent:#7cf6a4; --warn:#ffcc66; --err:#ff768b;
+    --ok:#63f5b4; --line:#243043; --btn:#1c2432; --btn-hi:#233045; --focus:#3a66ff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0; font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,Noto Sans; color:var(--ink);
+    background:linear-gradient(180deg,#0a0e13 0%, #0b1220 100%) fixed;}
+  header{position:sticky; top:0; z-index:5; background:rgba(11,15,20,.8); backdrop-filter: blur(10px); border-bottom:1px solid var(--line);}
+  .wrap{max-width:1100px; margin:0 auto; padding:16px;}
+  .flex{display:flex; gap:12px; flex-wrap:wrap; align-items:center}
+  h1{font-size:20px; margin:0}
+  .pill{display:inline-flex; align-items:center; padding:10px 14px; border-radius:999px; border:1px solid var(--line);
+    background:var(--btn); color:var(--ink); cursor:pointer; user-select:none}
+  .pill[aria-selected="true"]{background:var(--btn-hi); border-color:#3a4a66}
+  main{padding:16px}
+  .grid{display:grid; gap:16px}
+  @media (min-width:980px){ .grid{grid-template-columns:1.2fr .8fr} }
+  .card{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; box-shadow:0 10px 20px rgba(0,0,0,.25)}
+  h2{margin:0 0 12px 0; font-size:16px}
+  .muted{color:var(--muted)}
+  .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+  button,.btn{background:var(--btn); color:var(--ink); border:1px solid var(--line); border-radius:10px; padding:10px 14px; cursor:pointer}
+  button:hover,.btn:hover{background:var(--btn-hi)}
+  button.primary{background:linear-gradient(180deg,#1e2a42,#26405e); border-color:#3b5377}
+  .kbd{font-family:ui-monospace,Menlo,Consolas,monospace; background:#0d1420; border:1px solid #1f2a3d; padding:2px 6px; border-radius:6px}
+  .stack{display:flex; flex-direction:column; gap:10px}
+  .center{display:flex; align-items:center; justify-content:center}
+  .big{font-size:22px}
+  .ok{color:var(--ok)} .warn{color:var(--warn)} .err{color:var(--err)}
+  .split{display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .scoreline{display:flex; justify-content:space-between; border-bottom:1px dashed #22304a; padding:6px 0}
+  .mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+  .caps{letter-spacing:.04em; text-transform:uppercase; font-weight:600; color:#b6c9e8}
+  .sep{height:1px; background:var(--line); margin:8px 0}
+  .note{padding:10px; background:#0f1522; border:1px solid #1f2c45; border-radius:10px}
+  table{width:100%; border-collapse:collapse;} th,td{padding:8px; text-align:left; border-bottom:1px solid var(--line);} th{color:var(--muted);}
+  .hidden{display:none !important}
+  
+  /* --- Arcade Styles --- */
+  .arcade-view, .game-view {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%);
+    z-index: 100; display: flex; flex-direction: column;
+    align-items: center; padding: 20px; overflow-y: auto;
+  }
+  .arcade-header { width: 100%; max-width: 1000px; margin-bottom: 20px; }
+  .back-btn { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); }
+  .game-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px; width: 100%; max-width: 1000px;
+  }
+  .game-card {
+    background: linear-gradient(145deg, #1e293b, #0f172a);
+    border: 1px solid #334155; border-radius: 16px; padding: 20px;
+    display: flex; flex-direction: column; align-items: center; text-align: center;
+    cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+  }
+  .game-card:hover { transform: translateY(-5px); box-shadow: 0 8px 30px rgba(106, 211, 255, 0.3); }
+  .game-icon { font-size: 48px; margin-bottom: 12px; }
+  .game-card h3 { font-size: 20px; margin: 0 0 8px 0; color: var(--brand); }
+  .game-card p { font-size: 14px; color: var(--muted); margin: 0; line-height: 1.5; }
+  #game-content { width: 100%; max-width: 800px; text-align: center; }
+  #game-content .card { text-align: left; }
+  #game-content h2 { text-align: center; }
+
+  /* Game specific styles */
+  .orb-grid { display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; }
+  .orb { font-size: 16px; padding: 12px 18px; border-radius: 50px; cursor: pointer; border: 1px solid var(--line); background: var(--btn); user-select: none; }
+  .orb.good { outline: 2px solid var(--ok); }
+  .orb.bad { outline: 2px solid var(--err); }
+  .rotation-box{display:flex; justify-content:space-around; align-items:center; min-height:150px; font-size:100px; font-weight:bold; font-family:sans-serif;}
+
+  /* Cosmic Dispatcher Game Styles */
+  @keyframes fly-across {
+    from { right: -100px; }
+    to { right: 100%; }
+  }
+  .game-screen {
+    position: relative;
+    width: 100%;
+    height: 250px;
+    background: #0c121c;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .player-ship {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 40px;
+  }
+  .enemy-ship {
+    position: absolute;
+    top: 30%;
+    font-size: 50px;
+    animation: fly-across 3s linear forwards;
+  }
+  .enemy-ship.hit {
+    animation-play-state: paused;
+    color: var(--warn);
+  }
+  .enemy-ship.destroyed {
+     opacity: 0;
+     transition: opacity 0.2s;
+  }
+
+</style>
+</head>
+<body>
+<header id="main-header">
+  <div class="wrap flex">
+    <h1>Working Memory Lab</h1>
+    <nav class="flex" role="tablist" aria-label="Modes">
+      <div class="pill" role="tab" aria-selected="true" data-tab="assess">Assess</div>
+      <div class="pill" role="tab" aria-selected="false" data-tab="train">Train</div>
+      <div class="pill" role="tab" aria-selected="false" data-tab="coach">Coach</div>
+      <div class="pill" role="tab" aria-selected="false" data-tab="progress">Progress</div>
+      <div class="pill" role="tab" aria-selected="false" data-tab="learn">Learn</div>
+      <div class="pill" role="tab" aria-selected="false" data-tab="lifestyle">Lifestyle</div>
+      <div class="pill" role="tab" aria-selected="false" data-tab="arcade">Mind Arcade</div>
+    </nav>
+    <div class="muted" style="margin-left:auto">All data stays local</div>
+  </div>
+</header>
+
+<main class="wrap grid" id="lab-view">
+  <section id="stage" class="card stack">
+    <h2 class="caps">Stage</h2>
+    <div id="screen"></div>
+  </section>
+
+  <aside class="stack">
+    <div class="card stack">
+      <h2 class="caps">Launchpad</h2>
+      <div class="row" title="Adaptive difficulty across tasks">
+        <label class="switch"><input id="coachToggle" type="checkbox"></label>
+        <div><b>Coach Mode</b> <span class="muted">adaptive session</span></div>
+      </div>
+      <div class="sep"></div>
+      <div class="stack">
+        <div class="caps tight">Assessments & Drills</div>
+        <p class="muted">All exercises are now available as games in the "Mind Arcade" tab.</p>
+        <button onclick="document.querySelector('[data-tab=arcade]').click()">Go to Arcade</button>
+      </div>
+    </div>
+    <div class="card"><h2 class="caps">Scoreboard</h2><div id="scores" class="stack"></div></div>
+  </aside>
+</main>
+
+<!-- Arcade View -->
+<div id="arcade-view" class="arcade-view hidden">
+  <div class="arcade-header">
+    <button id="back-to-lab-btn" class="back-btn">← Back to Lab</button>
+  </div>
+  <div id="game-grid" class="game-grid"></div>
+</div>
+
+<!-- Game View -->
+<div id="game-view" class="game-view hidden">
+  <div class="arcade-header">
+    <button id="back-to-arcade-btn" class="back-btn">← Back to Arcade</button>
+  </div>
+  <div id="game-content" class="stack"></div>
+</div>
+
+
+<script>
+/* ---------- Infra & State Management ---------- */
+const $ = s => document.querySelector(s);
+const labView = $('#lab-view');
+const arcadeView = $('#arcade-view');
+const gameView = $('#game-view');
+const mainHeader = $('#main-header');
+const gameGrid = $('#game-grid');
+const gameContent = $('#game-content');
+const screen = $('#screen');
+
+const store = {
+  get(){ try{ return JSON.parse(localStorage.getItem('wmLab')||'{}'); }catch{ return {}; } },
+  set(data){ localStorage.setItem('wmLab', JSON.stringify(data)); },
+  push(key, entry){
+    const s = store.get();
+    s[key] = s[key]||[];
+    s[key].push({...entry, type:key, ts: entry.ts ?? Date.now()});
+    store.set(s);
+    renderScores();
+  }
+};
+const prefs = {
+  get(){ try{ return JSON.parse(localStorage.getItem('wmLabPrefs')||'{}'); }catch{ return {}; } },
+  set(p){ localStorage.setItem('wmLabPrefs', JSON.stringify(p)); }
+};
+
+/* ---------- View Routing ---------- */
+function showLabView() {
+  labView.classList.remove('hidden');
+  mainHeader.classList.remove('hidden');
+  arcadeView.classList.add('hidden');
+  gameView.classList.add('hidden');
+}
+
+function showArcadeView() {
+  labView.classList.add('hidden');
+  mainHeader.classList.add('hidden');
+  arcadeView.classList.remove('hidden');
+  gameView.classList.add('hidden');
+  drawArcade();
+}
+
+function showGameView() {
+  arcadeView.classList.add('hidden');
+  gameView.classList.remove('hidden');
+}
+
+document.querySelectorAll('[role="tab"]').forEach(tab=>{
+  tab.onclick = () => {
+    document.querySelectorAll('[role="tab"]').forEach(t=>t.setAttribute('aria-selected','false'));
+    tab.setAttribute('aria-selected','true');
+    const t = tab.dataset.tab;
+    
+    if (t === 'arcade') {
+      showArcadeView();
+    } else {
+      showLabView();
+      if (t==='assess') drawHome();
+      if (t==='train') drawTrain();
+      if (t==='coach') drawCoach();
+      if (t==='progress') drawProgress();
+      if (t==='learn') drawLearn();
+      if (t==='lifestyle') drawLifestyle();
+    }
+  };
+});
+
+$('#back-to-lab-btn').onclick = () => {
+    showLabView();
+    document.querySelector('[role="tab"][data-tab="assess"]').click();
+};
+$('#back-to-arcade-btn').onclick = showArcadeView;
+
+/* ---------- Arcade Drawing & Launching ---------- */
+const games = {
+  cosmicDispatcher: { title: "Cosmic Dispatcher", icon: "🚀", desc: "Monitor interstellar traffic and shoot down cloaked spy drones repeating their flight path. Stay sharp!", runner: runCosmicDispatcher },
+  alchemistsApprentice: { title: "Alchemist's Apprentice", icon: "🧪", desc: "Brew potions by adding ingredients in a sequence. Stabilize unstable mixtures by adding them in reverse order!", runner: runAlchemistsApprentice },
+  stargateLocksmith: { title: "Stargate Locksmith", icon: "🌌", desc: "Unlock ancient stargates by matching the key to the tumbling keyhole. Watch out for mirrored fakes!", runner: runStargateLocksmith },
+  soulCatcher: { title: "Soul Catcher", icon: "✨", desc: "Capture radiant, positive energy orbs in a mystical forest while avoiding the negative and neutral spirits.", runner: runSoulCatcher },
+  galacticTrader: { title: "Galactic Trader", icon: "📈", desc: "Close profitable deals at a busy spaceport. Calculate the total units in a shipment before your rivals do!", runner: runGalacticTrader },
+  guardianOfTheRunes: { title: "Guardian of the Runes", icon: "🏛️", desc: "Perform the sealing ritual. Memorize the sequence of glowing runes while judging the nature of spirit animals.", runner: runGuardianOfTheRunes },
+};
+
+function drawArcade() {
+  gameGrid.innerHTML = Object.entries(games).map(([key, game]) => `
+    <div class="game-card" data-game="${key}">
+      <div class="game-icon">${game.icon}</div>
+      <h3>${game.title}</h3>
+      <p>${game.desc}</p>
+    </div>
+  `).join('');
+}
+
+gameGrid.onclick = (e) => {
+  const card = e.target.closest('.game-card');
+  if (card) {
+    const gameKey = card.dataset.game;
+    launchGame(gameKey);
+  }
+};
+
+function launchGame(gameKey) {
+  showGameView();
+  gameContent.innerHTML = `<div class="card stack"><h2 class="caps">${games[gameKey].title}</h2><p>Loading game...</p></div>`;
+  setTimeout(() => {
+     games[gameKey].runner();
+  }, 500);
+}
+
+/* ---------- Lab-Specific Content Drawing ---------- */
+function drawHome(){
+  screen.innerHTML = `<p class="muted">Welcome to the Working Memory Lab. All exercises have been gamified and moved to the <b>Mind Arcade</b>. Head there to start training!</p>`;
+}
+function drawTrain(){
+  screen.innerHTML = `<p class="muted">Training protocols are now managed by individual games in the <b>Mind Arcade</b>.</p>`;
+}
+function drawCoach(){
+  screen.innerHTML = `<div class="card stack"><div class="caps">Coach Mode</div><p>Coach mode is now integrated into the Mind Arcade. Games will adapt their difficulty based on your performance.</p></div>`;
+}
+function drawProgress() {
+    screen.innerHTML = `<div class="card stack"><div class="caps">Trendlines</div><canvas id="chart1" width="600" height="180"></canvas></div><div class="card stack"><div class="caps">Recent Runs</div><div id="runs"></div></div>`;
+}
+function drawLearn(){
+  screen.innerHTML = `<div class="note"><div class="caps">What is Working Memory?</div><p>Working memory is a fundamental cognitive system for complex, goal-directed behavior. It facilitates the temporary storage and, crucially, the <b>active manipulation</b> of information for tasks like learning, reasoning, and problem-solving.</p></div><div class="note"><div class="caps">Our Evidence-Based Approach</div><p>This lab uses a <b>multi-modal approach</b> to enhancing working memory, combining cognitive training (the exercises) with physical and nutritional interventions (in the Lifestyle tab).</p></div><div class="note"><div class="caps">Key Brain Regions</div><ul><li><b>Prefrontal Cortex (PFC):</b> The "executive," focusing attention.</li><li><b>Broca's Area:</b> The "inner voice" for rehearsing verbal info.</li><li><b>Intraparietal Sulcus (IPS):</b> Processes numbers and spatial awareness.</li></ul></div>`;
+}
+function drawLifestyle() {
+  screen.innerHTML = `<div class="note"><div class="caps">Physical Exercise</div><p><b>Aerobic exercise</b> (running, swimming) is highly beneficial for working memory. It improves blood flow to the brain and promotes neuron growth. Aim for 30 minutes on most days.</p></div><div class="note"><div class="caps">Nutritional Interventions</div><p>Focus on whole, unprocessed foods like: lean proteins (salmon), vegetables (kale), fruits (berries), and healthy fats (olive oil).</p></div><div class="note"><div class="caps">Recommended Sleep By Age</div><table><thead><tr><th>Age Group</th><th>Hours per 24h</th></tr></thead><tbody><tr><td>Toddlers (1-3)</td><td>12-14</td></tr><tr><td>Preschoolers (3-5)</td><td>11-13</td></tr><tr><td>Kids (5-12)</td><td>10-11</td></tr><tr><td>Teens (13-18)</td><td>8.5-9.25</td></tr><tr><td>Adults (18+)</td><td>7-9</td></tr></tbody></table></div>`;
+}
+drawHome(); // Initial view
+
+/* ---------- Scoreboard & Utils ---------- */
+function renderScores(){
+  const s = store.get();
+  const box = $('#scores');
+  if(!box) return;
+  const keyMeta = { cosmicDispatcher: 'Cosmic Dispatcher', alchemistsApprentice: 'Alchemist', stargateLocksmith: 'Stargate Locksmith', soulCatcher: 'Soul Catcher', galacticTrader: 'Galactic Trader', guardianOfTheRunes: 'Rune Guardian' };
+  const fmt = new Intl.DateTimeFormat([], {month:'short', day:'2-digit', hour:'2-digit', minute:'2-digit'});
+  box.innerHTML = '';
+  Object.keys(keyMeta).forEach(k=>{
+    const rows = (s[k]||[]).slice(-5).reverse();
+    if (!rows.length) return;
+    const wrap = document.createElement('div');
+    wrap.className = 'stack';
+    wrap.innerHTML = `<div class="caps">${keyMeta[k]}</div>`;
+    rows.forEach(r=>{
+      const div = document.createElement('div');
+      div.className = 'scoreline mono';
+      const score = (r.scoreStr ?? r.correct??'');
+      div.innerHTML = `<span>${r.level ? `L${r.level}` : ''}</span><span>${score} · ${fmt.format(r.ts)}</span>`;
+      wrap.appendChild(div);
+    });
+    box.appendChild(wrap);
+  });
+}
+renderScores();
+function toast(msg, duration = 2000) {
+    const t = document.createElement('div');
+    t.textContent = msg;
+    t.style.cssText = 'position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#11233a; color:#dff1ff; border:1px solid #2a3e60; padding:12px 18px; border-radius:10px; box-shadow:0 5px 15px rgba(0,0,0,.4); z-index:101; font-size: 16px;';
+    document.body.appendChild(t);
+    setTimeout(() => { t.remove(); }, duration);
+}
+const wait = (ms) => new Promise(r => setTimeout(r, ms));
+const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));[a[i], a[j]] = [a[j], a[i]]; } return a; };
+const sample = (arr, n) => shuffle([...arr]).slice(0, n);
+
+/* ---------- Game Implementations ---------- */
+const gameData = {
+    ships: ['🚀', '🛸', '🛰️', '👽', '☄️'],
+    ingredients: ['Sunpetal', 'Moon Dust', 'Dragon Scale', 'Gillyweed', 'Phoenix Tear', 'Unicorn Horn'],
+    wordBank: {
+        positive: ["Joy", "Peace", "Calm", "Brave", "Kind", "Sunny"],
+        negative: ["Fear", "Anger", "Hate", "Sad", "Gloom", "Doubt"],
+        neutral: ["Leaf", "Stone", "Wind", "Cloud", "River", "Path"]
+    },
+};
+
+// 1. Cosmic Dispatcher (N-Back) - REVAMPED
+async function runCosmicDispatcher() {
+    const n = 2; // 2-back
+    const streamLength = 15;
+    const stream = [];
+    for (let i = 0; i < streamLength; i++) { stream.push(sample(gameData.ships, 1)[0]); }
+    for (let i = n + 2; i < streamLength; i += Math.floor(3 + Math.random() * 3)) { if(i < streamLength) stream[i] = stream[i - n]; }
+
+    let currentIndex = 0, hits = 0, misses = 0, fa = 0;
+    let currentShipEl = null;
+    const totalTargets = stream.filter((item, idx) => idx >= n && item === stream[idx - n]).length;
+
+    gameContent.innerHTML = `
+        <div class="card stack">
+            <h2 class="caps">Cosmic Dispatcher</h2>
+            <p class="muted">Shoot the spy drones! A spy is a ship that's identical to the one from 2 ships ago.</p>
+            <div id="game-screen" class="game-screen">
+                <div class="player-ship">🔫</div>
+            </div>
+            <button id="shoot-btn" class="primary" style="padding: 15px 30px; font-size: 20px;">FIRE</button>
+            <div class="row center"><div>Hits: <b id="hits">0</b></div><div>Misses: <b id="miss">0</b></div><div>FA: <b id="fa">0</b></div></div>
+        </div>`;
+    
+    const gameScreen = $('#game-screen');
+    const shootBtn = $('#shoot-btn');
+
+    shootBtn.onclick = () => {
+        if (!currentShipEl || currentShipEl.dataset.shot) return;
+        
+        currentShipEl.dataset.shot = "true";
+        currentShipEl.classList.add('hit');
+
+        if (currentShipEl.dataset.isTarget === "true") {
+            hits++;
+            $('#hits').textContent = hits;
+            toast('Spy destroyed!', 1000);
+        } else {
+            fa++;
+            $('#fa').textContent = fa;
+            toast('Civilian ship!', 1000);
+        }
+    };
+    
+    function gameLoop() {
+        if (currentIndex >= streamLength) {
+            finish();
+            return;
+        }
+
+        const shipType = stream[currentIndex];
+        const isTarget = currentIndex >= n && shipType === stream[currentIndex - n];
+        
+        // Use a local constant for the new ship element to avoid closure issues.
+        const shipEl = document.createElement('div');
+        shipEl.className = 'enemy-ship';
+        shipEl.textContent = shipType;
+        shipEl.dataset.isTarget = isTarget;
+
+        // The 'currentShipEl' now points to the latest ship for the shoot button to target.
+        currentShipEl = shipEl;
+        
+        gameScreen.appendChild(shipEl);
+
+        // The listener is now bound to the local 'shipEl', not the shared variable.
+        shipEl.addEventListener('animationend', () => {
+            if (shipEl.dataset.isTarget === "true" && !shipEl.dataset.shot) {
+                misses++;
+                $('#miss').textContent = misses;
+            }
+            shipEl.remove();
+        });
+
+        currentIndex++;
+        setTimeout(gameLoop, 2500); // Time between ships
+    }
+    
+    function finish() {
+        const scoreStr = `H:${hits} M:${misses} FA:${fa}`;
+        store.push('cosmicDispatcher', { scoreStr, totalTargets, hits, misses, fa });
+        gameContent.innerHTML = `<div class="card stack"><h2 class="caps">Shift Over!</h2><p>Dispatcher Report: ${scoreStr}</p><button onclick="showArcadeView()">Back to Arcade</button></div>`;
+    }
+    
+    gameLoop();
+}
+
+
+// 2. Alchemist's Apprentice (WM Span)
+async function runAlchemistsApprentice() {
+    const level = 2; // 3 items
+    const ingredients = sample(gameData.ingredients, level + 1);
+    
+    gameContent.innerHTML = `
+        <div class="card stack">
+            <h2 class="caps">Alchemist's Apprentice</h2>
+            <p class="muted">Memorize the ingredients as they drop into the cauldron. Then, add them in REVERSE to stabilize the potion!</p>
+            <div id="cauldron" class="center" style="font-size: 32px; height: 80px;"></div>
+            <form id="potion-form" class="row hidden"><input id="ans" class="mono" placeholder="Type ingredients in reverse..." style="flex:1;padding:10px;border-radius:8px;border:1px solid #31435f;background:#0f1720;color:var(--ink)" /><button class="primary">Brew</button></form>
+        </div>`;
+    
+    const cauldron = $('#cauldron');
+    for (const ing of ingredients) {
+        cauldron.textContent = ing;
+        await wait(1000);
+        cauldron.textContent = '...';
+        await wait(300);
+    }
+    cauldron.textContent = '🧪';
+    $('#potion-form').classList.remove('hidden');
+    $('#ans').focus();
+
+    $('#potion-form').onsubmit = (e) => {
+        e.preventDefault();
+        const got = $('#ans').value.trim().toLowerCase().split(' ').filter(Boolean);
+        const target = [...ingredients].reverse().map(w => w.toLowerCase().replace(' ', ''));
+        const pass = got.length === target.length && got.every((val, idx) => target[idx].includes(val));
+        
+        let resultHTML;
+        if (pass) {
+            resultHTML = `<h2 class="caps ok">Potion Stabilized!</h2><p>Excellent work, apprentice! Your memory is sharp.</p>`;
+            store.push('alchemistsApprentice', { scoreStr: `Level ${level + 1} Clear` });
+        } else {
+            resultHTML = `<h2 class="caps err">Potion Exploded!</h2><p>Incorrect sequence. The correct order was: ${[...ingredients].reverse().join(', ')}</p>`;
+            store.push('alchemistsApprentice', { scoreStr: `Level ${level + 1} Fail` });
+        }
+        gameContent.innerHTML = `<div class="card stack">${resultHTML}<button onclick="showArcadeView()">Back to Arcade</button></div>`;
+    };
+}
+
+
+// 3. Stargate Locksmith (Mental Rotation)
+async function runStargateLocksmith() {
+    const trials = 5;
+    let correct = 0;
+    
+    async function nextTrial(trialNum) {
+        if (trialNum > trials) {
+            finish();
+            return;
+        }
+        const isMirror = Math.random() > 0.5;
+        const rotation = Math.floor(Math.random() * 360);
+        
+        gameContent.innerHTML = `
+        <div class="card stack">
+            <h2 class="caps">Stargate Locksmith (${trialNum}/${trials})</h2>
+            <p class="muted">Does the tumbling keyhole match the key, or is it a mirror image?</p>
+            <div class="rotation-box">
+                <div>F</div>
+                <div style="transform: rotate(${rotation}deg) ${isMirror ? 'scaleX(-1)' : ''};">F</div>
+            </div>
+            <div class="row center">
+                <button id="same-btn">Match</button>
+                <button id="mirror-btn">Mirror</button>
+            </div>
+            <div id="res" class="center muted" style="min-height:24px;"></div>
+        </div>`;
+
+        $('#same-btn').onclick = () => check(false);
+        $('#mirror-btn').onclick = () => check(true);
+
+        function check(answeredMirror) {
+            const passed = answeredMirror === isMirror;
+            if (passed) {
+                correct++;
+                $('#res').innerHTML = `<span class="ok">Chevron Locked!</span>`;
+            } else {
+                $('#res').innerHTML = `<span class="err">Overload!</span>`;
+            }
+            setTimeout(() => nextTrial(trialNum + 1), 1000);
+        }
+    }
+
+    function finish() {
+        const scoreStr = `${correct}/${trials} Correct`;
+        store.push('stargateLocksmith', { scoreStr, correct, total: trials });
+        gameContent.innerHTML = `<div class="card stack"><h2 class="caps">Stargate Activated!</h2><p>You correctly identified ${scoreStr}.</p><button onclick="showArcadeView()">Back to Arcade</button></div>`;
+    }
+
+    nextTrial(1);
+}
+
+// 4. Soul Catcher (Filter Positive)
+async function runSoulCatcher() {
+    const pool = [...sample(gameData.wordBank.positive, 6), ...sample(gameData.wordBank.negative, 5), ...sample(gameData.wordBank.neutral, 5)];
+    shuffle(pool);
+    const totalPositive = gameData.wordBank.positive.length;
+
+    let clicks = 0, correctClicks = 0;
+
+    gameContent.innerHTML = `
+        <div class="card stack">
+            <h2 class="caps">Soul Catcher</h2>
+            <p class="muted">Click to capture all the <b>positive</b> energy orbs. Avoid the others!</p>
+            <div id="orb-grid" class="orb-grid"></div>
+            <div id="result" class="center muted" style="min-height: 24px;"></div>
+        </div>`;
+
+    const grid = $('#orb-grid');
+    pool.forEach(word => {
+        const orb = document.createElement('div');
+        orb.className = 'orb';
+        orb.textContent = word;
+        orb.onclick = () => {
+            if (orb.style.pointerEvents === 'none') return;
+            clicks++;
+            const isPos = gameData.wordBank.positive.includes(word);
+            if (isPos) {
+                correctClicks++;
+                orb.classList.add('good');
+            } else {
+                orb.classList.add('bad');
+            }
+            orb.style.pointerEvents = 'none';
+
+            if (correctClicks === 6) { // All positive orbs found
+                finish();
+            }
+        };
+        grid.appendChild(orb);
+    });
+
+    function finish() {
+        const acc = clicks > 0 ? Math.round((correctClicks / clicks) * 100) : 0;
+        const scoreStr = `${correctClicks}/${clicks} clicks, ${acc}% acc`;
+        store.push('soulCatcher', { scoreStr, acc });
+        $('#result').innerHTML = `<span class="ok">Forest is at peace! ${scoreStr}</span>`;
+        setTimeout(() => {
+             gameContent.innerHTML = `<div class="card stack"><h2 class="caps">Forest is at Peace!</h2><p>Your accuracy was ${acc}%.</p><button onclick="showArcadeView()">Back to Arcade</button></div>`;
+        }, 1500);
+    }
+}
+
+// 5. Galactic Trader (Mental Multiplication)
+async function runGalacticTrader() {
+    const problems = sample(["23x5", "41x3", "55x8", "12x21"], 3);
+    let correct = 0;
+    
+    function multAnswer(expr) { const [L, R] = expr.split('x').map(Number); return L * R; }
+
+    async function nextDeal(dealNum) {
+        if (dealNum >= problems.length) {
+            finish();
+            return;
+        }
+        const problem = problems[dealNum];
+        
+        gameContent.innerHTML = `
+        <div class="card stack">
+            <h2 class="caps">Galactic Trader (Deal ${dealNum+1}/${problems.length})</h2>
+            <p class="muted big">"I have <b class="warn">${problem.split('x')[0]}</b> crates, each with <b class="warn">${problem.split('x')[1]}</b> units. What's the total?"</p>
+            <form id="deal-form" class="row">
+              <input id="ans" type="number" class="mono" placeholder="Total units" style="flex:1;padding:10px;border-radius:8px;border:1px solid #31435f;background:#0f1720;color:var(--ink)" />
+              <button class="primary">Make Deal</button>
+            </form>
+             <div id="res" class="center muted" style="min-height:24px;"></div>
+        </div>`;
+        
+        $('#ans').focus();
+        $('#deal-form').onsubmit = (e) => {
+            e.preventDefault();
+            const want = multAnswer(problem);
+            const got = parseInt($('#ans').value, 10);
+            if (got === want) {
+                correct++;
+                $('#res').innerHTML = `<span class="ok">Deal Accepted! +100 Credits</span>`;
+            } else {
+                $('#res').innerHTML = `<span class="err">Deal Rejected! Correct was ${want}</span>`;
+            }
+            setTimeout(() => nextDeal(dealNum + 1), 1200);
+        };
+    }
+
+    function finish() {
+        const scoreStr = `${correct}/${problems.length} Deals`;
+        store.push('galacticTrader', { scoreStr, correct, total: problems.length });
+        gameContent.innerHTML = `<div class="card stack"><h2 class="caps">Trading Day Over!</h2><p>You made ${scoreStr}.</p><button onclick="showArcadeView()">Back to Arcade</button></div>`;
+    }
+
+    nextDeal(0);
+}
+
+
+// 6. Guardian of the Runes (Spatial+Verbal Bind)
+// This is a simplified version for brevity
+async function runGuardianOfTheRunes() {
+    const level = 1;
+    const steps = level + 1;
+    const seq = [];
+    const positions = ['Top', 'Left', 'Right'];
+    for (let i = 0; i < steps; i++) {
+        seq.push({
+            pos: sample(positions, 1)[0],
+            animal: sample(['Wolf', 'Eagle', 'Dove', 'Snake'], 1)[0],
+            isFriendly: ['Eagle', 'Dove'].includes(sample(['Wolf', 'Eagle', 'Dove', 'Snake'], 1)[0])
+        });
+    }
+
+    let verbalCorrect = 0;
+    
+    gameContent.innerHTML = `
+        <div class="card stack">
+            <h2 class="caps">Guardian of the Runes</h2>
+            <div id="phase-text" class="muted">The ritual begins... Memorize the rune positions and judge the spirits.</div>
+            <div id="display-area" class="center big" style="height: 80px;"></div>
+            <div id="response-area" class="row center"></div>
+        </div>`;
+    
+    const display = $('#display-area');
+    const response = $('#response-area');
+    const phaseText = $('#phase-text');
+
+    // Memorization + Verbal Phase
+    for (const item of seq) {
+        phaseText.textContent = `A rune glows at the ${item.pos} position.`;
+        display.textContent = `🧿`;
+        await wait(1500);
+
+        phaseText.textContent = `A spirit appears: ${item.animal}. Is it friendly?`;
+        display.textContent = '❓';
+        response.innerHTML = `<button id="f-btn">Friendly</button><button id="h-btn">Hostile</button>`;
+        
+        const answered = await new Promise(resolve => {
+            $('#f-btn').onclick = () => resolve(true);
+            $('#h-btn').onclick = () => resolve(false);
+        });
+        if (answered === item.isFriendly) verbalCorrect++;
+        response.innerHTML = '';
+        await wait(500);
+    }
+    
+    // Recall Phase
+    phaseText.textContent = `The runes have gone dark. Reactivate them in the correct order!`;
+    display.textContent = '...';
+    response.innerHTML = `<button data-pos="Top">Top</button><button data-pos="Left">Left</button><button data-pos="Right">Right</button>`;
+    
+    const targetSeq = seq.map(item => item.pos);
+    let clickedSeq = [];
+
+    response.querySelectorAll('button').forEach(btn => {
+        btn.onclick = () => {
+            const pos = btn.dataset.pos;
+            clickedSeq.push(pos);
+            btn.style.borderColor = 'var(--brand)';
+            btn.disabled = true;
+
+            if (clickedSeq.length === targetSeq.length) {
+                const pass = clickedSeq.every((p, i) => p === targetSeq[i]);
+                const verbalPass = verbalCorrect === seq.length;
+                let resultText = '';
+                if(pass && verbalPass) {
+                    resultText = 'Perfect Ritual! The temple is sealed.';
+                    store.push('guardianOfTheRunes', { scoreStr: 'Level 1 Clear' });
+                } else {
+                    resultText = `Ritual failed. ${!pass ? 'Incorrect rune sequence.' : ''} ${!verbalPass ? 'Incorrect spirit judgment.' : ''}`;
+                     store.push('guardianOfTheRunes', { scoreStr: 'Level 1 Fail' });
+                }
+                 gameContent.innerHTML = `<div class="card stack"><h2 class="caps">${pass && verbalPass ? "Success!" : "Failed!"}</h2><p>${resultText}</p><button onclick="showArcadeView()">Back to Arcade</button></div>`;
+            }
+        };
+    });
+}
+</script>
+</body>
+</html>
+
+
+
