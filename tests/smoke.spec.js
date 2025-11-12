@@ -90,14 +90,14 @@ test.describe('App Smoke Tests', () => {
     // Click Launchpad tab
     await page.click('[data-tab="launchpad"]');
     
-    // Verify assessment buttons exist
-    const wmSpanBtn = await page.locator('button[data-run="runSpan"]');
+    // Verify assessment buttons exist (updated selectors for new data-run values)
+    const wmSpanBtn = await page.locator('button[data-run="span"]');
     await expect(wmSpanBtn).toBeVisible();
     
-    const spatialBtn = await page.locator('button[data-run="runSpatial"]');
+    const spatialBtn = await page.locator('button[data-run="spatial"]');
     await expect(spatialBtn).toBeVisible();
     
-    const nbackBtn = await page.locator('button[data-run="runNBack"]');
+    const nbackBtn = await page.locator('button[data-run="nback"]');
     await expect(nbackBtn).toBeVisible();
   });
 });
