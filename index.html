@@ -259,7 +259,10 @@ function drawDashboard() {
 
   screen.innerHTML = `
     <div class="stack">
-      <h2 class="caps">Analytics Dashboard</h2>
+      <div class="row" style="justify-content:space-between">
+        <h2 class="caps">Analytics Dashboard</h2>
+        <button onclick="viewProfile()">⚙️ Profile</button>
+      </div>
       
       <!-- Cognitive Domain Scores -->
       <div class="split">
@@ -495,125 +498,533 @@ function drawCrossModal(){
 async function initializeApp() {
   const profile = profileStore.get();
   if (profile && profile.onboardingComplete) {
-    drawLaunchpad();
+    // Returning user - apply personalization and show default view
+    applyPersonalization(profile);
+    const defaultTab = getDefaultTab(profile.persona);
+    document.querySelector(`[data-tab="${defaultTab}"]`).click();
   } else {
-    await runQuiz();
+    // New user - run Discovery Quiz
+    await runDiscoveryQuiz();
+  }
+}
+
+/* ---------- Discovery Quiz & Personalization (Sprint 4) ---------- */
+async function runDiscoveryQuiz() {
+  // Step 1: Welcome Screen with optional quick demo
+  const skipQuiz = await showWelcomeScreen();
+  if (skipQuiz) {
+    // Create minimal profile and proceed
+    createMinimalProfile();
+    drawLaunchpad();
+    return;
   }
 
-  async function runQuiz() {
-    const username = await getQuizStep_Name();
-    const primaryGoal = await getQuizStep_Goal();
-    const cognitiveBaseline = await runQuiz_BaselineTasks();
+  // Step 2: Baseline Cognitive Assessment (under 3 minutes)
+  screen.innerHTML = `
+    <div class="stack" style="text-align:center; max-width:500px; margin:auto">
+      <h2 class="caps">Discovery Assessment</h2>
+      <p class="muted">Let's establish your cognitive baseline. This takes about 3 minutes.</p>
+      <p class="muted">We'll test three key abilities: <b>Attention</b>, <b>Verbal Memory</b>, and <b>Spatial Memory</b>.</p>
+      <div class="note" style="text-align:left">
+        <div class="caps tight">What to expect:</div>
+        <ul style="margin:8px 0">
+          <li>3 quick tests (20-30 seconds each)</li>
+          <li>No pressure - this is just your starting point</li>
+          <li>Your results will guide your personalized training</li>
+        </ul>
+      </div>
+      <button class="primary" onclick="continueQuiz()">Begin Assessment</button>
+    </div>
+  `;
 
-    const profile = {
-      username,
-      primaryGoal,
-      cognitiveBaseline,
-    };
+  await new Promise(resolve => { window.continueQuiz = resolve; });
+  
+  const baseline = await runBaselineAssessment();
 
-    applyConfiguration(profile);
+  // Step 3: Preference Discovery & Persona Mapping
+  const preferences = await runPreferenceQuiz();
+  
+  // Step 4: Generate Profile & Show Summary
+  const profile = generateUserProfile(baseline, preferences);
+  await showProfileSummary(profile);
+  
+  // Save and apply
+  profileStore.set(profile);
+  applyPersonalization(profile);
+  
+  // Launch into app
+  const defaultTab = getDefaultTab(profile.persona);
+  document.querySelector(`[data-tab="${defaultTab}"]`).click();
+}
 
+async function showWelcomeScreen() {
+  return new Promise(resolve => {
     screen.innerHTML = `
-      <div class="stack" style="text-align:center">
-        <h2>Setup Complete!</h2>
-        <p class="muted">Your personalized training plan is ready. The app will now begin.</p>
+      <div class="stack" style="text-align:center; max-width:550px; margin:auto">
+        <h2 style="font-size:28px; margin:20px 0">Welcome to Working Memory Lab</h2>
+        <p style="font-size:16px; color:var(--brand)">Train your brain with scientifically-backed exercises</p>
+        
+        <div class="note" style="text-align:left; margin:20px 0">
+          <div class="caps tight">What is Working Memory?</div>
+          <p class="muted" style="margin:8px 0">Working memory is your brain's "mental workspace" - it's what you use to hold and manipulate information temporarily. Strong working memory helps you:</p>
+          <ul style="margin:8px 0; color:var(--muted)">
+            <li>Follow complex instructions</li>
+            <li>Stay focused on tasks</li>
+            <li>Solve problems mentally</li>
+            <li>Remember conversations and names</li>
+          </ul>
+        </div>
+
+        <div class="card" style="background:#0f1725; border-color:#2a3b5e; padding:20px">
+          <div class="caps" style="margin-bottom:8px">Try a Quick Demo</div>
+          <p class="muted">Experience a 30-second sample task before the full assessment</p>
+          <button class="primary" style="margin-top:8px" onclick="this.disabled=true; demoAndContinue()">Try Quick Demo</button>
+        </div>
+
+        <div class="row" style="margin-top:20px; justify-content:center">
+          <button class="primary" style="padding:12px 24px" onclick="startFullQuiz()">Start Discovery Quiz</button>
+          <button onclick="skipToApp()">Skip to App</button>
+        </div>
       </div>
     `;
-    await wait(2500);
-    drawLaunchpad();
+
+    window.demoAndContinue = async () => {
+      await runQuickDemo();
+      resolve(false); // Don't skip quiz, continue after demo
+    };
+    window.startFullQuiz = () => resolve(false);
+    window.skipToApp = () => resolve(true);
+  });
+}
+
+async function runQuickDemo() {
+  screen.innerHTML = `
+    <div class="stack" style="text-align:center">
+      <h2 class="caps">Quick Demo: 1-Back Test</h2>
+      <p class="muted">Press <span class="kbd">Space</span> when you see the <b>same face twice in a row</b></p>
+      <div id="demoFace" class="photoBox" style="font-size:60px; height:150px">😊</div>
+      <p class="muted">Get ready...</p>
+    </div>
+  `;
+
+  await wait(1500);
+
+  const faces = ['😊','😎','🤔','😴','😁'];
+  const trials = 5;
+  let matches = 0;
+  let hits = 0;
+
+  for (let i = 0; i < trials; i++) {
+    const isMatch = i > 0 && Math.random() > 0.6;
+    const current = isMatch ? faces[faces.length - 1] : sample(faces, 1)[0];
+    faces.push(current);
+
+    if (isMatch) matches++;
+
+    const responded = await showDemoStimulus(current, 1200);
+    if (isMatch && responded) hits++;
   }
 
-  function getQuizStep_Name() {
-    return new Promise(resolve => {
-      screen.innerHTML = `
-        <div class="stack" style="max-width:400px; margin:auto; text-align:center">
-          <h2>Welcome! What should we call you?</h2>
-          <form id="f" class="row">
-            <input id="ans" class="mono" placeholder="Your name" style="flex:1;padding:10px;border-radius:8px;border:1px solid #31435f;background:#0f1720;color:var(--ink)" />
-            <button class="primary" type="submit">Next</button>
-          </form>
-        </div>
-      `;
-      $('#ans').focus();
-      $('#f').onsubmit = (e) => {
+  screen.innerHTML = `
+    <div class="stack" style="text-align:center; max-width:400px; margin:auto">
+      <h2 class="caps ok">Demo Complete!</h2>
+      <p class="muted">You caught ${hits} out of ${matches} matches. Nice work!</p>
+      <p style="margin-top:20px">The full assessment will test your <b>Attention</b>, <b>Verbal Memory</b>, and <b>Spatial Memory</b> to create your personalized training plan.</p>
+      <button class="primary" style="margin-top:20px" onclick="continueAfterDemo()">Continue to Full Assessment</button>
+    </div>
+  `;
+
+  await new Promise(resolve => { window.continueAfterDemo = resolve; });
+}
+
+function showDemoStimulus(face, duration) {
+  return new Promise(resolve => {
+    const faceEl = $('#demoFace');
+    if (!faceEl) { resolve(false); return; }
+    
+    faceEl.textContent = face;
+    let responded = false;
+
+    const keyHandler = (e) => {
+      if (e.code === 'Space') {
         e.preventDefault();
-        const name = $('#ans').value.trim() || 'User';
-        resolve(name);
-      };
-    });
-  }
+        responded = true;
+      }
+    };
 
-  function getQuizStep_Goal() {
-    return new Promise(resolve => {
-      screen.innerHTML = `
-        <div class="stack" style="max-width:400px; margin:auto; text-align:center">
-          <h2>What's your primary goal?</h2>
-          <p class="muted">This will help personalize your training plan.</p>
-          <div class="stack">
-            <button class="primary" data-goal="focus">Improve Focus</button>
-            <button class="primary" data-goal="memory">Boost Memory</button>
-            <button class="primary" data-goal="problem-solving">Enhance Problem-Solving</button>
+    document.addEventListener('keydown', keyHandler);
+
+    setTimeout(() => {
+      document.removeEventListener('keydown', keyHandler);
+      resolve(responded);
+    }, duration);
+  });
+}
+
+async function runBaselineAssessment() {
+  const results = { attention: 0, verbal: 0, spatial: 0 };
+
+  // Test 1: Attention (1-back, 20 trials)
+  screen.innerHTML = `
+    <div class="stack" style="text-align:center">
+      <h2 class="caps">Test 1 of 3: Attention</h2>
+      <p class="muted">Press <span class="kbd">Space</span> when you see the same emoji twice in a row</p>
+      <p class="muted">About 30 seconds</p>
+    </div>
+  `;
+  await wait(2000);
+  
+  const nbackResult = await blockN(1, 20, false); // 1-back, 20 trials, don't save to history
+  results.attention = accPct(nbackResult.hits, nbackResult.miss, nbackResult.fa);
+
+  // Test 2: Verbal Memory (Span, 3 trials at level 3)
+  screen.innerHTML = `
+    <div class="stack" style="text-align:center">
+      <h2 class="caps">Test 2 of 3: Verbal Memory</h2>
+      <p class="muted">Remember digits and repeat them in <b>reverse order</b></p>
+      <p class="muted">3 quick trials</p>
+    </div>
+  `;
+  await wait(2000);
+
+  let verbalCorrect = 0;
+  for (let i = 0; i < 3; i++) {
+    const passed = await spanTrial(3, spanLists[3], false);
+    if (passed) verbalCorrect++;
+  }
+  results.verbal = Math.round((verbalCorrect / 3) * 100);
+
+  // Test 3: Spatial Memory (Spatial binding, level 1)
+  screen.innerHTML = `
+    <div class="stack" style="text-align:center">
+      <h2 class="caps">Test 3 of 3: Spatial Memory</h2>
+      <p class="muted">Remember which triangles were marked, then recall their positions</p>
+      <p class="muted">2 quick trials</p>
+    </div>
+  `;
+  await wait(2000);
+
+  let spatialCorrect = 0;
+  for (let i = 0; i < 2; i++) {
+    const passed = await spatialLevel(1, false);
+    if (passed) spatialCorrect++;
+  }
+  results.spatial = Math.round((spatialCorrect / 2) * 100);
+
+  return results;
+}
+
+async function runPreferenceQuiz() {
+  const prefs = {};
+
+  // Question 1: Primary Goal (Persona mapping)
+  prefs.primaryGoal = await new Promise(resolve => {
+    screen.innerHTML = `
+      <div class="stack" style="text-align:center; max-width:500px; margin:auto">
+        <h2 class="caps">What brings you here?</h2>
+        <p class="muted">Choose the goal that resonates most with you</p>
+        <div class="stack" style="margin-top:20px">
+          <button class="primary" style="text-align:left; padding:16px" data-goal="improve">
+            <div style="font-size:16px">📈 Improve My Memory</div>
+            <div class="muted" style="font-size:13px; margin-top:4px">I feel my memory could be better and want to see real progress</div>
+          </button>
+          <button class="primary" style="text-align:left; padding:16px" data-goal="compete">
+            <div style="font-size:16px">🏆 Beat My Best Scores</div>
+            <div class="muted" style="font-size:13px; margin-top:4px">I love challenges and want to push my cognitive limits</div>
+          </button>
+          <button class="primary" style="text-align:left; padding:16px" data-goal="understand">
+            <div style="font-size:16px">🧠 Understand My Cognition</div>
+            <div class="muted" style="font-size:13px; margin-top:4px">I'm curious about how my brain works and want detailed insights</div>
+          </button>
+        </div>
+      </div>
+    `;
+    document.querySelectorAll('[data-goal]').forEach(btn => {
+      btn.onclick = () => resolve(btn.dataset.goal);
+    });
+  });
+
+  // Question 2: Training Style
+  prefs.trainingStyle = await new Promise(resolve => {
+    screen.innerHTML = `
+      <div class="stack" style="text-align:center; max-width:500px; margin:auto">
+        <h2 class="caps">Preferred Training Style</h2>
+        <p class="muted">How do you like to train?</p>
+        <div class="split" style="margin-top:20px">
+          <button class="primary" style="padding:20px" data-style="visual">
+            <div style="font-size:24px; margin-bottom:8px">👁️</div>
+            <div>Visual</div>
+            <div class="muted" style="font-size:12px; margin-top:4px">I prefer seeing information</div>
+          </button>
+          <button class="primary" style="padding:20px" data-style="both">
+            <div style="font-size:24px; margin-bottom:8px">🎯</div>
+            <div>Balanced</div>
+            <div class="muted" style="font-size:12px; margin-top:4px">Mix of visual and other modes</div>
+          </button>
+        </div>
+        <button style="margin-top:12px" onclick="skipQuestion('balanced')">Skip</button>
+      </div>
+    `;
+    document.querySelectorAll('[data-style]').forEach(btn => {
+      btn.onclick = () => resolve(btn.dataset.style);
+    });
+    window.skipQuestion = (defaultVal) => resolve(defaultVal);
+  });
+
+  // Question 3: Session Length Preference
+  prefs.sessionLength = await new Promise(resolve => {
+    screen.innerHTML = `
+      <div class="stack" style="text-align:center; max-width:500px; margin:auto">
+        <h2 class="caps">Ideal Session Length</h2>
+        <p class="muted">How much time do you typically have for training?</p>
+        <div class="split" style="margin-top:20px">
+          <button class="primary" style="padding:20px" data-length="quick">
+            <div style="font-size:24px; margin-bottom:8px">⚡</div>
+            <div>Quick</div>
+            <div class="muted" style="font-size:12px; margin-top:4px">5-10 minutes</div>
+          </button>
+          <button class="primary" style="padding:20px" data-length="deep">
+            <div style="font-size:24px; margin-bottom:8px">🧘</div>
+            <div>Deep</div>
+            <div class="muted" style="font-size:12px; margin-top:4px">15-30 minutes</div>
+          </button>
+        </div>
+        <button style="margin-top:12px" onclick="skipQuestion('quick')">Skip</button>
+      </div>
+    `;
+    document.querySelectorAll('[data-length]').forEach(btn => {
+      btn.onclick = () => resolve(btn.dataset.length);
+    });
+    window.skipQuestion = (defaultVal) => resolve(defaultVal);
+  });
+
+  return prefs;
+}
+
+function generateUserProfile(baseline, preferences) {
+  // Map goal to persona
+  const personaMap = {
+    'improve': 'struggler',
+    'compete': 'competitor',
+    'understand': 'scientist'
+  };
+  const persona = personaMap[preferences.primaryGoal] || 'struggler';
+
+  // Determine weakest domains for recommendations
+  const domains = [
+    { name: 'nback', score: baseline.attention },
+    { name: 'span', score: baseline.verbal },
+    { name: 'spatial', score: baseline.spatial }
+  ];
+  domains.sort((a, b) => a.score - b.score); // Sort by score ascending (weakest first)
+  
+  const recommendations = domains.map(d => d.name); // Weakest first
+
+  return {
+    created: new Date().toISOString(),
+    persona: persona,
+    baseline: {
+      attention: Math.round(baseline.attention),
+      verbal: Math.round(baseline.verbal),
+      spatial: Math.round(baseline.spatial)
+    },
+    preferences: {
+      style: preferences.trainingStyle,
+      sessionLength: preferences.sessionLength
+    },
+    recommendations: recommendations,
+    onboardingComplete: true
+  };
+}
+
+async function showProfileSummary(profile) {
+  const personaTitles = {
+    struggler: 'The Improver',
+    competitor: 'The Competitor',
+    scientist: 'The Scientist'
+  };
+  const personaDescs = {
+    struggler: 'You\'re focused on progress and real-world improvement. We\'ll track your gains closely.',
+    competitor: 'You love challenges and pushing limits. We\'ll help you beat your best scores.',
+    scientist: 'You\'re analytical and data-driven. We\'ll provide detailed insights into your cognition.'
+  };
+
+  screen.innerHTML = `
+    <div class="stack" style="text-align:center; max-width:550px; margin:auto">
+      <h2 class="caps ok">Profile Created!</h2>
+      
+      <div class="card" style="background:#0f1725; border-color:#2a3b5e; padding:20px">
+        <div style="font-size:40px; margin-bottom:8px">${profile.persona === 'struggler' ? '📈' : profile.persona === 'competitor' ? '🏆' : '🧠'}</div>
+        <div style="font-size:20px; margin-bottom:8px">${personaTitles[profile.persona]}</div>
+        <p class="muted">${personaDescs[profile.persona]}</p>
+      </div>
+
+      <div class="card" style="background:#0f1725; border-color:#2a3b5e; padding:16px; text-align:left">
+        <div class="caps tight" style="margin-bottom:12px">Your Cognitive Baseline</div>
+        <div class="stack">
+          <div class="row" style="justify-content:space-between">
+            <span>🎯 Attention</span>
+            <span class="${profile.baseline.attention >= 70 ? 'ok' : 'warn'}">${profile.baseline.attention}%</span>
+          </div>
+          <div class="row" style="justify-content:space-between">
+            <span>💬 Verbal Memory</span>
+            <span class="${profile.baseline.verbal >= 70 ? 'ok' : 'warn'}">${profile.baseline.verbal}%</span>
+          </div>
+          <div class="row" style="justify-content:space-between">
+            <span>📍 Spatial Memory</span>
+            <span class="${profile.baseline.spatial >= 70 ? 'ok' : 'warn'}">${profile.baseline.spatial}%</span>
           </div>
         </div>
-      `;
-      document.querySelectorAll('[data-goal]').forEach(btn => {
-        btn.onclick = () => resolve(btn.dataset.goal);
-      });
-    });
-  }
+      </div>
 
-  async function runQuiz_BaselineTasks() {
+      <div class="note" style="text-align:left">
+        <div class="caps tight">Recommended Starting Tasks</div>
+        <p class="muted" style="margin:8px 0">Based on your baseline, we recommend focusing on:</p>
+        <ul style="margin:4px 0">
+          ${profile.recommendations.map(task => `<li><b>${task.toUpperCase()}</b></li>`).join('')}
+        </ul>
+      </div>
+
+      <button class="primary" style="margin-top:20px; padding:12px 24px" onclick="finishQuiz()">Start Training →</button>
+    </div>
+  `;
+
+  await new Promise(resolve => { window.finishQuiz = resolve; });
+}
+
+function applyPersonalization(profile) {
+  // Set Coach Mode based on persona
+  const p = prefs.get();
+  p.coachMode = profile.persona !== 'competitor'; // Competitors might prefer manual control
+  prefs.set(p);
+  if ($('#coachToggle')) $('#coachToggle').checked = p.coachMode;
+}
+
+function getDefaultTab(persona) {
+  // Persona-based default views
+  if (persona === 'struggler') return 'dashboard'; // Show progress
+  if (persona === 'competitor') return 'launchpad'; // Show challenges
+  if (persona === 'scientist') return 'dashboard'; // Show analytics
+  return 'launchpad';
+}
+
+function createMinimalProfile() {
+  // For users who skip the quiz
+  const profile = {
+    created: new Date().toISOString(),
+    persona: 'struggler',
+    baseline: { attention: 50, verbal: 50, spatial: 50 },
+    preferences: { style: 'visual', sessionLength: 'quick' },
+    recommendations: ['nback', 'span', 'spatial'],
+    onboardingComplete: true,
+    skippedQuiz: true
+  };
+  profileStore.set(profile);
+  applyPersonalization(profile);
+}
+
+/* ---------- Profile Management ---------- */
+function viewProfile() {
+  const profile = profileStore.get();
+  
+  if (!profile) {
     screen.innerHTML = `
-      <div class="stack" style="text-align:center">
-        <h2>Let's establish a baseline.</h2>
-        <p class="muted">You'll now do three short tasks.</p>
+      <div class="stack" style="text-align:center; max-width:400px; margin:auto">
+        <h2 class="caps">No Profile Found</h2>
+        <p class="muted">You haven't completed the Discovery Quiz yet.</p>
+        <button class="primary" onclick="retakeQuiz()">Take Discovery Quiz</button>
       </div>
     `;
-    await wait(2500);
-
-    // Simplified, non-persistent task runners for the quiz
-    const nbackResult = await blockN(1, 30, false); // 1-back, 30s, don't save
-    const attention = accPct(nbackResult.hits, nbackResult.miss, nbackResult.fa);
-
-    const spanResult = await spanTrial(2, spanLists[2], false); // Level 2, don't save
-    const verbal = spanResult ? 80 : 50; // Simplified scoring for baseline
-
-    const spatialResult = await spatialLevel(1, false); // Level 1, don't save
-    const spatial = spatialResult ? 80 : 50; // Simplified scoring
-
-    return { attention, verbal, spatial };
+    return;
   }
 
-  function applyConfiguration(profile) {
-    const recommendedTasks = new Set();
-    
-    // Recommend based on goal
-    if (profile.primaryGoal === 'focus') recommendedTasks.add('nback');
-    if (profile.primaryGoal === 'memory') recommendedTasks.add('span');
-    if (profile.primaryGoal === 'problem-solving') recommendedTasks.add('spatial');
+  const personaTitles = {
+    struggler: 'The Improver',
+    competitor: 'The Competitor',
+    scientist: 'The Scientist'
+  };
+  const personaIcons = {
+    struggler: '📈',
+    competitor: '🏆',
+    scientist: '🧠'
+  };
 
-    // Recommend based on weakness
-    if (profile.cognitiveBaseline.attention < 70) recommendedTasks.add('nback');
-    if (profile.cognitiveBaseline.verbal < 70) recommendedTasks.add('span');
-    if (profile.cognitiveBaseline.spatial < 70) recommendedTasks.add('spatial');
+  screen.innerHTML = `
+    <div class="stack" style="max-width:600px; margin:auto">
+      <div class="row" style="justify-content:space-between">
+        <h2 class="caps">Your Profile</h2>
+        <button onclick="drawDashboard()">← Back</button>
+      </div>
 
-    const finalProfile = {
-      ...profile,
-      configuration: {
-        recommendedTasks: [...recommendedTasks],
-        coachMode: true // Default to ON for new users
-      },
-      onboardingComplete: true
-    };
+      <div class="card" style="background:#0f1725; border-color:#2a3b5e; padding:20px; text-align:center">
+        <div style="font-size:50px; margin-bottom:12px">${personaIcons[profile.persona] || '🧠'}</div>
+        <div style="font-size:22px; margin-bottom:8px">${personaTitles[profile.persona] || 'User'}</div>
+        <div class="muted" style="font-size:13px">Profile created: ${new Date(profile.created).toLocaleDateString()}</div>
+        ${profile.skippedQuiz ? '<div class="warn" style="font-size:13px; margin-top:4px">(Quiz was skipped)</div>' : ''}
+      </div>
 
-    profileStore.set(finalProfile);
-    
-    // Also apply prefs immediately
-    const p = prefs.get();
-    p.coachMode = true;
-    prefs.set(p);
-    coachToggle.checked = true;
+      <div class="card" style="background:#0f1725; border-color:#2a3b5e; padding:16px">
+        <div class="caps tight" style="margin-bottom:12px">Cognitive Baseline</div>
+        <div class="stack">
+          <div class="row" style="justify-content:space-between">
+            <span>🎯 Attention</span>
+            <span class="${profile.baseline.attention >= 70 ? 'ok' : 'warn'}">${profile.baseline.attention}%</span>
+          </div>
+          <div class="row" style="justify-content:space-between">
+            <span>💬 Verbal Memory</span>
+            <span class="${profile.baseline.verbal >= 70 ? 'ok' : 'warn'}">${profile.baseline.verbal}%</span>
+          </div>
+          <div class="row" style="justify-content:space-between">
+            <span>📍 Spatial Memory</span>
+            <span class="${profile.baseline.spatial >= 70 ? 'ok' : 'warn'}">${profile.baseline.spatial}%</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="background:#0f1725; border-color:#2a3b5e; padding:16px">
+        <div class="caps tight" style="margin-bottom:12px">Preferences</div>
+        <div class="stack">
+          <div class="row" style="justify-content:space-between">
+            <span class="muted">Training Style</span>
+            <span>${profile.preferences.style || 'Not set'}</span>
+          </div>
+          <div class="row" style="justify-content:space-between">
+            <span class="muted">Session Length</span>
+            <span>${profile.preferences.sessionLength || 'Not set'}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="note">
+        <div class="caps tight">Recommended Tasks</div>
+        <p class="muted" style="margin:8px 0">Based on your baseline assessment:</p>
+        <div class="row" style="gap:6px; margin-top:8px">
+          ${profile.recommendations ? profile.recommendations.map(task => 
+            `<span class="tag">${task.toUpperCase()}</span>`
+          ).join('') : '<span class="muted">None</span>'}
+        </div>
+      </div>
+
+      <div class="card" style="border-color:#3a4a66">
+        <div class="caps tight" style="margin-bottom:8px">⚠️ Reset Profile</div>
+        <p class="muted" style="margin-bottom:12px">Retake the Discovery Quiz to update your profile and baseline scores. <b>This will not delete your training history.</b></p>
+        <button class="warn" onclick="retakeQuiz()">Retake Discovery Quiz</button>
+      </div>
+    </div>
+  `;
+}
+
+function retakeQuiz() {
+  if (!confirm('Are you sure you want to retake the Discovery Quiz? This will reset your profile and baseline scores, but your training history will be preserved.')) {
+    return;
   }
+  
+  // Clear profile to trigger quiz
+  profileStore.set(null);
+  localStorage.removeItem('wmLabProfile');
+  
+  // Reload app to restart quiz
+  location.reload();
 }
 
 /* ---------- Scores sidebar ---------- */
