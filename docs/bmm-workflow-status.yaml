@@ -37,6 +37,7 @@ workflows:
   sprint-2: docs/sprint-2-retrospective.md  # Focus, Lifestyle, BrainTok
   sprint-3: docs/sprint-3-retrospective.md  # Enhanced Dashboard, Real-World Validation, Lifestyle Correlation
   sprint-4: docs/sprint-4-retrospective.md  # Discovery Quiz, PWA Foundation, Polish (COMPLETE)
+  sprint-5: docs/sprint-5-plan.md  # Quality, Validation & User Feedback (PLANNED)
   # Story development will be tracked in sprint-status.yaml
 
 # Project Context
