@@ -111,15 +111,15 @@
       <div class="stack">
         <div class="caps tight">Assessments</div>
         <div class="split" role="group" aria-label="Assessment tasks">
-          <button class="primary" data-run="runSpan" aria-label="Start WM Span reverse order task">WM Span (reverse)</button>
-          <button class="primary" data-run="runSpatial" aria-label="Start Spatial and Verbal Binding task">Spatial+Verbal Bind</button>
-          <button data-run="runCrossmodal" aria-label="Start Cross-modal Binding task">Cross-modal Binding</button>
-          <button data-run="runNBack" aria-label="Start N-Back emotion task">1-Back / 2-Back (emotion)</button>
+          <button class="primary" data-run="span" aria-label="Start WM Span reverse order task">WM Span (reverse)</button>
+          <button class="primary" data-run="spatial" aria-label="Start Spatial and Verbal Binding task">Spatial+Verbal Bind</button>
+          <button data-run="crossmodal" aria-label="Start Cross-modal Binding task">Cross-modal Binding</button>
+          <button data-run="nback" aria-label="Start N-Back emotion task">1-Back / 2-Back (emotion)</button>
         </div>
         <div class="caps tight">Drills</div>
         <div class="split" role="group" aria-label="Cognitive drills">
-          <button data-run="runFilterPos" aria-label="Start Filter the Positive task">Filter the Positive</button>
-          <button data-run="runMult" aria-label="Start Mental Multiplication task">Mental Multiplication</button>
+          <button data-run="filterPos" aria-label="Start Filter the Positive task">Filter the Positive</button>
+          <button data-run="mult" aria-label="Start Mental Multiplication task">Mental Multiplication</button>
         </div>
         <div class="caps tight">Programs</div>
         <div class="split" role="group" aria-label="Training programs">
@@ -237,6 +237,10 @@ store.reset = function() {
     toast('Scores have been reset.');
   }
 };
+
+// Expose key objects/functions for testing
+window.store = store;
+window.coachOn = undefined; // Will be defined later
 
 // Generic push for array-based stores
 focusStore.push = function(entry) {
@@ -1113,6 +1117,7 @@ const coachToggle = $('#coachToggle');
 coachToggle.checked = !!prefs.get().coachMode;
 coachToggle.onchange = ()=>{ const p=prefs.get(); p.coachMode=coachToggle.checked; prefs.set(p); toast(`Coach Mode ${coachOn()?'ON':'OFF'}`); };
 function coachOn(){ return !!prefs.get().coachMode; }
+window.coachOn = coachOn; // Expose for testing
 $('#coachSession').onclick = runCoachSession;
 
 /* ---------- Data (sample lists) ---------- */
@@ -2092,6 +2097,7 @@ function toast(msg, type = 'info'){
   document.body.appendChild(t);
   setTimeout(()=>{ t.remove(); }, type === 'err' ? 3000 : 2000);
 }
+window.toast = toast; // Expose for testing
 
 /* ---------- PWA Support (Sprint 4 Phase 2) ---------- */
 // Service Worker Registration
