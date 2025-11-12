@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Lifestyle Data for Correlation Testing</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 700px;
+            margin: 60px auto;
+            padding: 30px;
+            background: #0b0f14;
+            color: #e8f0ff;
+        }
+        .container {
+            background: #121822;
+            border-radius: 16px;
+            padding: 32px;
+            border: 1px solid #243043;
+        }
+        h1 { color: #6ad3ff; margin-top: 0; }
+        .status {
+            padding: 16px;
+            margin: 20px 0;
+            border-radius: 12px;
+            background: #0f1522;
+            border: 1px solid #243043;
+        }
+        .success {
+            background: #1a3d2e;
+            border-color: #2bb673;
+            color: #7cf6a4;
+        }
+        button {
+            background: #1e2a42;
+            color: #e8f0ff;
+            border: 1px solid #31435f;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 8px 8px 8px 0;
+        }
+        button:hover {
+            background: #26405e;
+        }
+        .stats {
+            margin: 16px 0;
+            padding: 16px;
+            background: #0d1420;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 Add Lifestyle Data for Correlation</h1>
+        <p>This will add lifestyle logs (sleep, exercise, stress) for days with task performance data, enabling the correlation insights feature.</p>
+        
+        <div id="status" class="status">
+            <strong>Ready to add lifestyle data</strong>
+            <p style="margin: 8px 0 0 0; color: #9db0cc;">
+                This will create realistic lifestyle logs matching your task session dates.
+            </p>
+        </div>
+
+        <button onclick="addLifestyleData()">➕ Add Lifestyle Logs</button>
+        <button onclick="location.href='index.html'">🏠 Go to App</button>
+
+        <div id="stats" style="display: none;" class="stats"></div>
+    </div>
+
+    <script>
+        function addLifestyleData() {
+            const statusDiv = document.getElementById('status');
+            const statsDiv = document.getElementById('stats');
+            
+            try {
+                // Get task data to find dates
+                const wmLab = JSON.parse(localStorage.getItem('wmLab') || '{}');
+                const taskSessions = Object.values(wmLab).flat();
+                
+                if (taskSessions.length === 0) {
+                    statusDiv.innerHTML = `
+                        <strong>⚠️ No task data found</strong>
+                        <p style="margin: 8px 0 0 0; color: #ffcc66;">Please add sample task data first using add-sample-data.html</p>
+                    `;
+                    return;
+                }
+
+                // Get unique dates from task sessions
+                const taskDates = [...new Set(taskSessions.map(s => 
+                    new Date(s.ts).toISOString().slice(0, 10)
+                ))];
+
+                // Get existing lifestyle data
+                const lifestyleData = JSON.parse(localStorage.getItem('wmLabLifestyle') || '{}');
+                let added = 0;
+
+                // Add lifestyle data for each task date
+                taskDates.forEach((date, index) => {
+                    if (!lifestyleData[date]) {
+                        // Create realistic variations
+                        const dayIndex = index % 15; // Cycle through patterns
+                        
+                        // Sleep: 6-9 hours with some variation
+                        const baseSleep = 7 + Math.sin(dayIndex / 3) * 1.5;
+                        const sleep = Math.max(5.5, Math.min(9, baseSleep + (Math.random() - 0.5)));
+                        
+                        // Exercise: 0-60 minutes with realistic patterns
+                        const baseExercise = dayIndex % 3 === 0 ? 30 : dayIndex % 7 === 0 ? 45 : 15;
+                        const exercise = Math.max(0, baseExercise + (Math.random() - 0.5) * 20);
+                        
+                        // Stress: 1-10 with inverse correlation to sleep
+                        const baseStress = 5 + (7 - sleep) * 0.5;
+                        const stress = Math.max(1, Math.min(10, baseStress + (Math.random() - 0.5) * 2));
+                        
+                        lifestyleData[date] = {
+                            sleep: Math.round(sleep * 10) / 10,
+                            exercise: Math.round(exercise),
+                            stress: Math.round(stress * 10) / 10
+                        };
+                        added++;
+                    }
+                });
+
+                localStorage.setItem('wmLabLifestyle', JSON.stringify(lifestyleData));
+
+                // Show success
+                statusDiv.className = 'status success';
+                statusDiv.innerHTML = `
+                    <strong>✅ Lifestyle data added successfully!</strong>
+                    <p style="margin: 8px 0 0 0;">Lifestyle logs have been created for ${added} days with task data.</p>
+                `;
+
+                // Show stats
+                statsDiv.style.display = 'block';
+                statsDiv.innerHTML = `
+                    <div><strong>📊 Lifestyle Data:</strong></div>
+                    <div>  • Total days with lifestyle logs: ${Object.keys(lifestyleData).length}</div>
+                    <div>  • Days with matching task data: ${taskDates.length}</div>
+                    <div>  • New lifestyle logs added: ${added}</div>
+                    <div style="margin-top: 12px; color: #7cf6a4;"><strong>Ready for correlation analysis!</strong></div>
+                    <div style="margin-top: 8px; font-size: 12px;">Go to Dashboard → scroll to "Lifestyle-Performance Insights"</div>
+                `;
+
+            } catch (e) {
+                statusDiv.className = 'status';
+                statusDiv.innerHTML = `
+                    <strong>❌ Error adding lifestyle data</strong>
+                    <p style="margin: 8px 0 0 0; color: #ff768b;">${e.message}</p>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>
