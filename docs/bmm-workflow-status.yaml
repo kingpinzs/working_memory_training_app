@@ -1,0 +1,63 @@
+# BMad Method Workflow Status
+# Generated: 2025-11-11
+# Project: Working Memory Lab
+# Track: BMad Method (Brownfield)
+
+project_name: Working Memory Lab
+project_type: software
+selected_track: method
+field_type: brownfield
+workflow_path: method-brownfield.yaml
+
+# Workflow Progress
+# Format: workflow-id: status  # agent: agent-name
+# Status values: required|recommended|optional|completed|{file-path}
+
+workflows:
+  # Prerequisite: Documentation (Required for undocumented brownfield)
+  document-project: docs/bmm-index.md  # agent: analyst
+
+  # Phase 0: Discovery (Optional - User Selected)
+  brainstorm-project: docs/bmm-brainstorming-session-2025-01-11.md  # agent: analyst
+  research: docs/bmm-research-session-2025-01-11.md  # agent: analyst
+
+  # Phase 1: Planning
+  prd: docs/prd-phase1.md  # agent: pm
+  validate-prd: optional  # agent: pm
+  create-design: conditional  # agent: ux-designer
+
+  # Phase 2: Solutioning
+  create-architecture: docs/add-phase1.md  # agent: architect
+  validate-architecture: optional  # agent: architect
+  solutioning-gate-check: required  # agent: architect
+
+  # Phase 3: Implementation
+  sprint-planning: required  # agent: sm
+  sprint-1: completed  # Discovery Quiz & Enhanced Analytics (baseline)
+  sprint-2: docs/sprint-2-retrospective.md  # Focus, Lifestyle, BrainTok
+  sprint-3: docs/sprint-3-plan.md  # Enhanced Dashboard, Real-World Validation, Lifestyle Correlation
+  # Story development will be tracked in sprint-status.yaml
+
+# Project Context
+user_description: |
+  A web-based/PWA cognitive training platform to improve and track working memory capacity 
+  with scientifically-backed assessments and data-driven proof of improvement.
+  
+  Personal mission: Demonstrate measurable working memory improvement through consistent 
+  training and data tracking.
+  
+  Key capabilities:
+  - Assessment tools to establish baseline working memory capacity
+  - Scientific cognitive training exercises (N-Back, Span, Spatial binding, etc.)
+  - Progress tracking with charts and data export
+  - Adaptive training (Coach Mode) that adjusts difficulty based on performance
+  - Gamification to maintain engagement (Mind Arcade)
+  - PWA capabilities for offline use and app-like experience
+
+# Notes
+notes: |
+  - Existing codebase has working implementations of core cognitive tasks
+  - Multiple version files (index.html, indexv2-v6.html) with progressive features
+  - Uses vanilla JavaScript, no build tools, localStorage persistence
+  - AI instructions documented in .github/copilot-instructions.md
+  - Current branch: staging
