@@ -29,13 +29,14 @@ workflows:
   # Phase 2: Solutioning
   create-architecture: docs/add-phase1.md  # agent: architect
   validate-architecture: optional  # agent: architect
-  solutioning-gate-check: required  # agent: architect
+  solutioning-gate-check: skipped  # agent: architect
 
   # Phase 3: Implementation
-  sprint-planning: required  # agent: sm
+  sprint-planning: skipped  # agent: sm (using custom sprint-based approach)
   sprint-1: completed  # Discovery Quiz & Enhanced Analytics (baseline)
   sprint-2: docs/sprint-2-retrospective.md  # Focus, Lifestyle, BrainTok
-  sprint-3: docs/sprint-3-plan.md  # Enhanced Dashboard, Real-World Validation, Lifestyle Correlation
+  sprint-3: docs/sprint-3-retrospective.md  # Enhanced Dashboard, Real-World Validation, Lifestyle Correlation
+  sprint-4: docs/sprint-4-plan.md  # Discovery Quiz, PWA Foundation, Polish (IN PLANNING)
   # Story development will be tracked in sprint-status.yaml
 
 # Project Context
