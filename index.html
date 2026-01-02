@@ -2099,7 +2099,134 @@ function toast(msg, type = 'info'){
 }
 window.toast = toast; // Expose for testing
 
-/* ---------- PWA Support (Sprint 4 Phase 2) ---------- */
+/* ---------- PWA Analytics (Sprint 5 Epic 13) ---------- */
+const pwaAnalyticsStore = new Store('wmLabPWAAnalytics', true); // Array-based for event tracking
+
+// PWA Installation Analytics
+let deferredPrompt = null;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  // Prevent the mini-infobar from appearing on mobile
+  e.preventDefault();
+  
+  // Store the event for later use
+  deferredPrompt = e;
+  
+  // Track that prompt is available
+  pwaAnalyticsStore.push({
+    event: 'install_prompt_available',
+    timestamp: new Date().toISOString(),
+    userAgent: navigator.userAgent
+  });
+  
+  // Show custom install button if we have one
+  showInstallButton();
+});
+
+window.addEventListener('appinstalled', () => {
+  // Track successful installation
+  pwaAnalyticsStore.push({
+    event: 'app_installed',
+    timestamp: new Date().toISOString(),
+    userAgent: navigator.userAgent
+  });
+  
+  // Hide install button
+  hideInstallButton();
+  
+  // Clear the deferred prompt
+  deferredPrompt = null;
+  
+  toast('App installed successfully! 🎉', 'ok');
+});
+
+// Custom install button functions
+function showInstallButton() {
+  // Add install button to launchpad if not already present
+  const launchpad = $('#screen');
+  if (launchpad && launchpad.innerHTML.includes('Launchpad')) {
+    // Check if install button already exists
+    if (!launchpad.querySelector('#installPWA')) {
+      const installBtn = document.createElement('button');
+      installBtn.id = 'installPWA';
+      installBtn.className = 'primary';
+      installBtn.innerHTML = '📱 Install App';
+      installBtn.onclick = triggerInstall;
+      installBtn.setAttribute('aria-label', 'Install Progressive Web App');
+      
+      // Add to launchpad
+      const buttonContainer = launchpad.querySelector('.button-grid') || launchpad.querySelector('div');
+      if (buttonContainer) {
+        buttonContainer.appendChild(installBtn);
+      }
+    }
+  }
+}
+
+function hideInstallButton() {
+  const installBtn = $('#installPWA');
+  if (installBtn) {
+    installBtn.remove();
+  }
+}
+
+function triggerInstall() {
+  if (!deferredPrompt) {
+    toast('Install prompt not available', 'warn');
+    return;
+  }
+  
+  // Show the install prompt
+  deferredPrompt.prompt();
+  
+  // Track that we showed the prompt
+  pwaAnalyticsStore.push({
+    event: 'install_prompt_shown',
+    timestamp: new Date().toISOString()
+  });
+  
+  // Wait for the user to respond to the prompt
+  deferredPrompt.userChoice.then((choiceResult) => {
+    if (choiceResult.outcome === 'accepted') {
+      pwaAnalyticsStore.push({
+        event: 'install_accepted',
+        timestamp: new Date().toISOString()
+      });
+      toast('Installing app...', 'info');
+    } else {
+      pwaAnalyticsStore.push({
+        event: 'install_dismissed',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    // Clear the deferred prompt
+    deferredPrompt = null;
+    
+    // Hide the install button
+    hideInstallButton();
+  });
+}
+
+// PWA Session Tracking
+function trackPWASession() {
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+  const isInWebAppiOS = window.navigator.standalone === true;
+  const isPWA = isStandalone || isInWebAppiOS;
+  
+  pwaAnalyticsStore.push({
+    event: 'session_start',
+    isPWA: isPWA,
+    displayMode: isStandalone ? 'standalone' : (isInWebAppiOS ? 'standalone-ios' : 'browser'),
+    timestamp: new Date().toISOString(),
+    userAgent: navigator.userAgent
+  });
+  
+  return isPWA;
+}
+
+// Call on page load
+trackPWASession();
 // Service Worker Registration
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
