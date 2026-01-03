@@ -65,7 +65,7 @@
 | Improvement | Description | Effort | Status |
 |-------------|-------------|--------|--------|
 | Level 4 | Add 5-item level | Low | ✅ Session 8 |
-| Audio cue option | Play color name as audio reinforcement | Medium | ❌ Deferred |
+| Audio cue option | Play color name as audio reinforcement | Medium | ✅ Session 9 |
 | Time pressure mode | Add optional countdown for recall phase | Low | ✅ Session 9 |
 | Shape variety | Add more shapes (pentagon, star, diamond) | Low | ✅ Session 8 |
 

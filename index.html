@@ -1811,6 +1811,13 @@ function openSettings() {
           </label>
           <div><b>Digit Mode</b> <span class="muted">numbers for WM Span</span></div>
         </div>
+
+        <div class="row" title="Speak color names during Cross-modal Binding">
+          <label class="switch">
+            <input id="audioCuesToggle" type="checkbox" ${p.audioCues ? 'checked' : ''}>
+          </label>
+          <div><b>Audio Cues</b> <span class="muted">speak colors in Cross-modal</span></div>
+        </div>
       </div>
 
       <div class="card stack">
@@ -1859,6 +1866,13 @@ function openSettings() {
     p.digitMode = e.target.checked;
     prefs.set(p);
     toast(`Digit Mode ${p.digitMode ? 'ON' : 'OFF'}`);
+  };
+
+  $('#audioCuesToggle').onchange = (e) => {
+    const p = prefs.get();
+    p.audioCues = e.target.checked;
+    prefs.set(p);
+    toast(`Audio Cues ${p.audioCues ? 'ON' : 'OFF'}`);
   };
 
   $('#settingsCoachToggle').onchange = (e) => {
@@ -1951,6 +1965,15 @@ const shapeClipPaths = {
   diamond: 'polygon(50% 0, 100% 50%, 50% 100%, 0 50%)',
   pentagon: 'polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%)',
   star: 'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)'
+};
+// Color hex to speakable name mapping for audio cues
+const colorNames = {
+  '#ff6666': 'red',
+  '#66ff66': 'green',
+  '#6666ff': 'blue',
+  '#ffff66': 'yellow',
+  '#ff66ff': 'purple',
+  '#66ffff': 'cyan'
 };
 
 /* ---------- Launch actions ---------- */
@@ -2290,10 +2313,20 @@ function crossModalLevel(level){
     const timerEl = $('#timer');
 
     const displayTime = prefs.get().fastTempo ? 800 : 1200;
+    const useAudio = prefs.get().audioCues;
     for (const item of seq){
       const clipPath = shapeClipPaths[item.shape] || 'none';
       const borderRadius = item.shape==='circle' ? '50%' : clipPath !== 'none' ? '0' : '10px';
       shapeDisplay.innerHTML = `<div class="shape" style="background-color:${item.color}; border-radius:${borderRadius}; clip-path:${clipPath}"></div>`;
+      // Speak color name if audio cues enabled
+      if (useAudio && 'speechSynthesis' in window) {
+        speechSynthesis.cancel();
+        const colorName = colorNames[item.color] || 'color';
+        const utter = new SpeechSynthesisUtterance(colorName);
+        utter.rate = 1.0;
+        utter.volume = 0.8;
+        speechSynthesis.speak(utter);
+      }
       await wait(displayTime);
       shapeDisplay.innerHTML = '';
       await wait(300);
