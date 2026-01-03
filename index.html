@@ -4355,6 +4355,12 @@ document.addEventListener('keydown', (e) => {
       e.preventDefault();
     }
   }
+
+  // P key - view profile
+  if (e.key.toLowerCase() === 'p' && !e.ctrlKey && !e.metaKey) {
+    viewProfile();
+    e.preventDefault();
+  }
 });
 
 function showKeyboardShortcuts() {
@@ -4404,6 +4410,10 @@ function showKeyboardShortcuts() {
       <div style="display: flex; justify-content: space-between">
         <span><kbd class="kbd">R</kbd></span>
         <span>Retry last task</span>
+      </div>
+      <div style="display: flex; justify-content: space-between">
+        <span><kbd class="kbd">P</kbd></span>
+        <span>View profile</span>
       </div>
     </div>
     <div style="margin-top: 16px; height: 1px; background: #243043"></div>
