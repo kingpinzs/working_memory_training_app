@@ -2987,7 +2987,8 @@ async function runFilterPos(){
 
 /* ---------- 5) Mental Multiplication ---------- */
 async function runMult(){
-  const problems = sample(["78x4","33x5","25x8","45x3","23x34","12x24","17x55","64x70"], 6);
+  const allProblems = ["78x4","33x5","25x8","45x3","23x34","12x24","17x55","64x70","56x3","42x6","15x9","82x4","35x7","48x5","27x8","63x4"];
+  const problems = sample(allProblems, 10);
   let idx=0, correct=0;
   screen.innerHTML = `
     <div class="stack">
@@ -3007,7 +3008,7 @@ async function runMult(){
           const acc = Math.round((correct/problems.length)*100);
           const pb = isPersonalBest('mult', acc);
           const cmp = getPerformanceComparison('mult', acc);
-          const isGood = acc >= 66; // 66%+ (4/6) is good
+          const isGood = acc >= 70; // 70%+ (7/10) is good
           const encourage = getEncouragement(isGood, pb);
           store.push('mult',{scoreStr:`${correct}/${problems.length}`, acc, personalBest: pb});
           toast(`Mental mult · ${correct}/${problems.length}${pb ? ' 🏆 ' : cmp ? cmp + ' · ' : ' · '}${encourage}`, pb ? 'ok' : isGood ? 'info' : 'info');
