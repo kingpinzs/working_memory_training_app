@@ -43,16 +43,16 @@
 | Bug | Location | Severity | Fix Effort | Status |
 |-----|----------|----------|------------|--------|
 | retakeQuiz uses confirm() | index.html:1136 | Low - works but not elegant | 30min | ✅ FIXED |
-| BrainTok placeholder only | drawBrainTok() | Medium - feature incomplete | See BrainTok plan | Pending |
+| BrainTok placeholder only | drawBrainTok() | Medium - feature incomplete | See BrainTok plan | ✅ FIXED (Phase 5) |
 | Coach Session toast spam | runCoachSession() | Low - too many toasts | 30min | ✅ FIXED |
 
-### POTENTIAL ISSUES (Need Verification)
+### POTENTIAL ISSUES (Verified)
 
-| Issue | Description | Verification Needed |
-|-------|-------------|---------------------|
-| PWA cache staleness | Users may get old version | Test cache update flow |
-| Discovery Quiz skip | Minimal profile may miss fields | Check all consumers |
-| Score sidebar overflow | Many scores may break layout | Test with 50+ entries |
+| Issue | Description | Status |
+|-------|-------------|--------|
+| PWA cache staleness | Users may get old version | ✅ FIXED - Updated to v2 |
+| Discovery Quiz skip | Minimal profile may miss fields | ✅ FIXED - Fixed baseline property |
+| Score sidebar overflow | Many scores may break layout | ✅ OK - Limited to 5 per category |
 
 ---
 
