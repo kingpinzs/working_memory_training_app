@@ -246,6 +246,71 @@ store.reset = function() {
   toast('Scores have been reset.');
 };
 
+// Personal best tracking helpers
+function getPersonalBest(taskKey, metric = 'bestLevel') {
+  const s = store.get();
+  const records = s[taskKey] || [];
+  if (records.length === 0) return null;
+
+  // Different tasks have different "best" metrics
+  switch (taskKey) {
+    case 'span':
+      return Math.max(...records.map(r => r.bestLevel || 0));
+    case 'spatial':
+    case 'crossmodal':
+      return Math.max(...records.map(r => r.cleared || 0));
+    case 'nback':
+      // Best is highest acc2 if available, otherwise acc1
+      const acc2s = records.filter(r => r.acc2 !== undefined).map(r => r.acc2);
+      const acc1s = records.filter(r => r.acc1 !== undefined).map(r => r.acc1);
+      if (acc2s.length > 0) return { acc2: Math.max(...acc2s) };
+      if (acc1s.length > 0) return { acc1: Math.max(...acc1s) };
+      return null;
+    case 'filterPos':
+      // Best is highest accuracy with lowest time
+      const bestAcc = Math.max(...records.map(r => r.acc || 0));
+      const bestTime = Math.min(...records.filter(r => r.acc === bestAcc).map(r => r.time || Infinity));
+      return { acc: bestAcc, time: bestTime };
+    case 'mult':
+      return Math.max(...records.map(r => r.acc || 0));
+    default:
+      return null;
+  }
+}
+
+function isPersonalBest(taskKey, newValue) {
+  const best = getPersonalBest(taskKey);
+  if (best === null) return true; // First entry is always a personal best
+
+  switch (taskKey) {
+    case 'span':
+      return newValue > best;
+    case 'spatial':
+    case 'crossmodal':
+      return newValue > best;
+    case 'nback':
+      // Check if new acc1 or acc2 beats the previous best
+      if (typeof newValue === 'object') {
+        if (newValue.acc2 !== undefined && best.acc2 !== undefined) {
+          return newValue.acc2 > best.acc2;
+        }
+        if (newValue.acc1 !== undefined && best.acc1 !== undefined) {
+          return newValue.acc1 > best.acc1;
+        }
+      }
+      return false;
+    case 'filterPos':
+      // Better accuracy, or same accuracy with faster time
+      if (newValue.acc > best.acc) return true;
+      if (newValue.acc === best.acc && newValue.time < best.time) return true;
+      return false;
+    case 'mult':
+      return newValue > best;
+    default:
+      return false;
+  }
+}
+
 // Show inline reset confirmation instead of browser confirm()
 function showResetConfirm() {
   const btn = document.getElementById('resetScores');
@@ -1290,9 +1355,10 @@ async function runSpan(doSave = true){
     if (ok){ bestLevel = lv; } else break;
   }
   if (doSave) {
+    const pb = isPersonalBest('span', bestLevel);
     const scoreStr = `Best L${bestLevel}`;
-    store.push('span',{label:'Best level', scoreStr, bestLevel});
-    toast(`WM Span · ${scoreStr}`);
+    store.push('span',{label:'Best level', scoreStr, bestLevel, personalBest: pb});
+    toast(`WM Span · ${scoreStr}${pb ? ' 🏆 New PB!' : ''}`);
   }
   return bestLevel;
 }
@@ -1333,8 +1399,9 @@ async function runSpatial(){
     const ok = await spatialLevel(level);
     if (ok){ cleared++; level++; } else break;
   }
-  store.push('spatial',{level:level-1, cleared, scoreStr:`${cleared}/${maxLevel}`});
-  toast(`Spatial+Verbal · ${cleared}/${maxLevel}`);
+  const pb = isPersonalBest('spatial', cleared);
+  store.push('spatial',{level:level-1, cleared, scoreStr:`${cleared}/${maxLevel}`, personalBest: pb});
+  toast(`Spatial+Verbal · ${cleared}/${maxLevel}${pb ? ' 🏆 New PB!' : ''}`);
 }
 function spatialLevel(level, doSave = true){
   const steps = level+1; // L1=2, L2=3, L3=4
@@ -1407,8 +1474,9 @@ async function runCrossModal(){
     const ok = await crossModalLevel(level);
     if (ok){ cleared++; level++; } else break;
   }
-  store.push('crossmodal',{level:level-1, cleared, scoreStr:`${cleared}/${maxLevel}`});
-  toast(`Cross-modal · ${cleared}/${maxLevel}`);
+  const pb = isPersonalBest('crossmodal', cleared);
+  store.push('crossmodal',{level:level-1, cleared, scoreStr:`${cleared}/${maxLevel}`, personalBest: pb});
+  toast(`Cross-modal · ${cleared}/${maxLevel}${pb ? ' 🏆 New PB!' : ''}`);
 }
 function crossModalLevel(level){
   const steps = level+1; // L1=2, L2=3, L3=4
@@ -1498,8 +1566,9 @@ function finishNBack({b1,b2}){
   const scoreStr = `${b1?`1-back H/M/FA ${b1.hits}/${b1.miss}/${b1.fa}`:''}${b1&&b2?' · ':''}${b2?`2-back ${b2.hits}/${b2.miss}/${b2.fa}`:''}`;
   const acc1 = b1? accPct(b1.hits,b1.miss,b1.fa) : undefined;
   const acc2 = b2? accPct(b2.hits,b2.miss,b2.fa) : undefined;
-  store.push('nback',{scoreStr, acc1, acc2, fa1:b1?.fa, fa2:b2?.fa});
-  toast(`N-Back · ${scoreStr}`);
+  const pb = isPersonalBest('nback', {acc1, acc2});
+  store.push('nback',{scoreStr, acc1, acc2, fa1:b1?.fa, fa2:b2?.fa, personalBest: pb});
+  toast(`N-Back · ${scoreStr}${pb ? ' 🏆 New PB!' : ''}`);
 }
 function accPct(h,m,fa){ const t=h+m; return t? Math.round((h/t)*100) : 0; }
 async function blockN(n, secs=60, doSave = true){
@@ -1563,8 +1632,9 @@ async function runFilterPos(){
         if (Array.from(bank.children).every(x=> x.classList.contains('good') || !wordBank.positive.includes(x.textContent))){
           const secs=((performance.now()-t0)/1000).toFixed(1); $('#t').textContent=secs;
           const accFinal = Math.round((correct/clicks)*100);
-          $('#done').innerHTML = `<span class="ok">Done:</span> ${correct}/${clicks} in <b>${secs}s</b>`;
-          store.push('filterPos',{scoreStr:`${correct}/${clicks} in ${secs}s`, acc:accFinal, time:parseFloat(secs)});
+          const pb = isPersonalBest('filterPos', {acc: accFinal, time: parseFloat(secs)});
+          $('#done').innerHTML = `<span class="ok">Done:</span> ${correct}/${clicks} in <b>${secs}s</b>${pb ? ' 🏆 PB!' : ''}`;
+          store.push('filterPos',{scoreStr:`${correct}/${clicks} in ${secs}s`, acc:accFinal, time:parseFloat(secs), personalBest: pb});
           setTimeout(resolve, 500);
         }
       };
@@ -1591,11 +1661,12 @@ async function runMult(){
     </div>`;
   const q=$('#q'), f=$('#f'), a=$('#a'), res=$('#res');
   
-  function show(){ 
+  function show(){
       if (idx >= problems.length) {
           const acc = Math.round((correct/problems.length)*100);
-          store.push('mult',{scoreStr:`${correct}/${problems.length}`, acc});
-          toast(`Mental mult · ${correct}/${problems.length}`);
+          const pb = isPersonalBest('mult', acc);
+          store.push('mult',{scoreStr:`${correct}/${problems.length}`, acc, personalBest: pb});
+          toast(`Mental mult · ${correct}/${problems.length}${pb ? ' 🏆 New PB!' : ''}`);
           drawLaunchpad();
           return;
       }
