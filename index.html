@@ -1833,6 +1833,17 @@ function openSettings() {
           <div><b>Addition Mode</b> <span class="muted">add instead of multiply</span></div>
         </div>
 
+        <div class="row" title="Choose difficulty for Mental Math">
+          <div style="flex:1">
+            <div><b>Math Difficulty</b></div>
+            <div id="mathDifficultyBtns" style="display:flex;gap:6px;margin-top:6px">
+              <button class="chip ${(p.mathDifficulty||'medium')==='easy'?'good':''}" data-diff="easy" style="padding:6px 10px;font-size:0.85rem">Easy</button>
+              <button class="chip ${(p.mathDifficulty||'medium')==='medium'?'good':''}" data-diff="medium" style="padding:6px 10px;font-size:0.85rem">Medium</button>
+              <button class="chip ${p.mathDifficulty==='hard'?'good':''}" data-diff="hard" style="padding:6px 10px;font-size:0.85rem">Hard</button>
+            </div>
+          </div>
+        </div>
+
         <div class="row" title="Choose word category for Filter task">
           <div style="flex:1">
             <div><b>Filter Category</b></div>
@@ -1913,6 +1924,22 @@ function openSettings() {
     prefs.set(p);
     toast(`Addition Mode ${p.additionMode ? 'ON' : 'OFF'}`);
   };
+
+  // Math difficulty button handlers
+  document.querySelectorAll('#mathDifficultyBtns button').forEach(btn => {
+    btn.onclick = () => {
+      const diff = btn.dataset.diff;
+      const p = prefs.get();
+      p.mathDifficulty = diff;
+      prefs.set(p);
+      // Update button states
+      document.querySelectorAll('#mathDifficultyBtns button').forEach(b => {
+        b.classList.toggle('good', b.dataset.diff === diff);
+      });
+      const diffNames = { easy: 'Easy', medium: 'Medium', hard: 'Hard' };
+      toast(`Math: ${diffNames[diff]}`);
+    };
+  });
 
   // Filter category button handlers
   document.querySelectorAll('#filterCategoryBtns button').forEach(btn => {
@@ -3581,21 +3608,32 @@ async function runFilterPos(){
 }
 
 /* ---------- 5) Mental Math (Multiplication or Addition) ---------- */
-// Multiplication problems
-const multProblems = ["78x4","33x5","25x8","45x3","23x34","12x24","17x55","64x70","56x3","42x6","15x9","82x4","35x7","48x5","27x8","63x4"];
-// Addition problems (challenging multi-digit sums)
-const addProblems = ["78+45","33+89","125+88","245+137","523+348","612+294","417+555","364+278","156+347","242+689","315+498","182+479","635+287","448+356","527+386","763+458"];
+// Tiered multiplication problems
+const multTiers = {
+  easy: ["5x4","7x3","6x8","9x5","4x7","8x6","3x9","7x5","6x4","8x3","5x6","9x4","7x8","4x9","6x7","8x5"], // Single digit
+  medium: ["78x4","33x5","25x8","45x3","56x3","42x6","15x9","82x4","35x7","48x5","27x8","63x4","54x6","73x5","28x7","46x8"], // 2x1 digit
+  hard: ["23x34","12x24","17x55","64x70","45x23","36x18","52x47","83x26","74x35","29x46","67x38","54x63","42x57","78x34","63x45","89x27"] // 2x2 digit
+};
+// Tiered addition problems
+const addTiers = {
+  easy: ["25+18","32+45","47+28","56+34","63+29","41+37","58+24","73+19","36+48","52+39","68+27","44+38","57+35","29+46","75+18","83+16"], // 2-digit
+  medium: ["125+88","245+137","156+347","242+189","315+198","182+279","135+287","248+156","327+186","463+258","375+248","526+187","483+259","367+285","528+196","649+273"], // 3-digit
+  hard: ["523+348","612+294","417+555","364+278","847+396","529+684","736+495","892+467","658+789","943+578","786+459","625+798","834+567","976+348","549+876","738+694"] // 3-digit challenging
+};
 
 async function runMult(){
   const useAddition = prefs.get().additionMode;
-  const allProblems = useAddition ? addProblems : multProblems;
+  const difficulty = prefs.get().mathDifficulty || 'medium';
+  const allProblems = useAddition ? addTiers[difficulty] : multTiers[difficulty];
   const problems = sample(allProblems, 10);
   let idx=0, correct=0;
   const useTimer = prefs.get().timePressure;
-  const timePerProblem = 15; // 15 seconds per problem
+  // Adjust time based on difficulty
+  const timePerProblem = difficulty === 'easy' ? 10 : difficulty === 'hard' ? 20 : 15;
   let timerInterval = null;
 
-  const taskTitle = useAddition ? 'Mental Addition' : 'Mental Multiplication';
+  const diffLabel = { easy: '(Easy)', medium: '', hard: '(Hard)' }[difficulty];
+  const taskTitle = useAddition ? `Mental Addition ${diffLabel}`.trim() : `Mental Multiplication ${diffLabel}`.trim();
   const taskHint = useAddition ? 'Add the numbers mentally.' : 'Compute left→right with a rolling sum.';
 
   screen.innerHTML = `
@@ -3639,7 +3677,7 @@ async function runMult(){
           const cmp = getPerformanceComparison('mult', acc);
           const isGood = acc >= 70; // 70%+ (7/10) is good
           const encourage = getEncouragement(isGood, pb);
-          store.push('mult',{scoreStr:`${correct}/${problems.length}`, acc, personalBest: pb, additionMode: useAddition});
+          store.push('mult',{scoreStr:`${correct}/${problems.length}`, acc, personalBest: pb, additionMode: useAddition, difficulty});
 
           const resultHtml = `
             <div class="big">${correct}/${problems.length}${pb ? ' 🏆' : ''}</div>
