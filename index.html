@@ -2051,11 +2051,14 @@ async function runSpan(doSave = true){
 }
 function spanTrial(level, words, doSave = true){
   return new Promise(async resolve=>{
+    const useTimer = prefs.get().timePressure;
+    const timeLimit = 10 + (level * 2); // 12-18 seconds based on level
     screen.innerHTML = `
       <div class="stack">
         <h2>WM Span – Level ${level}</h2>
         <div class="muted">Remember these words. Then type them <b>in reverse order</b>.</div>
         <div id="show" class="big center" style="min-height:80px"></div>
+        ${useTimer ? `<div id="timer" class="muted center" style="font-size:1.5rem;color:var(--warn)"></div>` : ''}
         <div class="sep"></div>
         <form id="f" class="row">
           <input id="ans" class="mono" placeholder="type reversed list (comma/space ok)" style="flex:1;padding:10px;border-radius:8px;border:1px solid #31435f;background:#0f1720;color:var(--ink)" />
@@ -2065,8 +2068,26 @@ function spanTrial(level, words, doSave = true){
     const show = $('#show');
     for (const w of words){ show.textContent = w; await wait(900); show.textContent = ''; await wait(250); }
     $('#ans').focus();
+
+    let timerInterval = null;
+    let timeRemaining = timeLimit;
+    if (useTimer) {
+      const timerEl = $('#timer');
+      timerEl.textContent = `⏱️ ${timeRemaining}s`;
+      timerInterval = setInterval(() => {
+        timeRemaining--;
+        timerEl.textContent = `⏱️ ${timeRemaining}s`;
+        if (timeRemaining <= 3) timerEl.style.color = 'var(--err)';
+        if (timeRemaining <= 0) {
+          clearInterval(timerInterval);
+          $('#f').dispatchEvent(new Event('submit', { cancelable: true }));
+        }
+      }, 1000);
+    }
+
     $('#f').onsubmit = (e)=>{
       e.preventDefault();
+      if (timerInterval) clearInterval(timerInterval);
       const got = $('#ans').value.trim().replace(/[, ]+/g,' ').split(' ').filter(Boolean).map(x=>x.toLowerCase());
       const target = [...words].reverse().map(x=>x.toLowerCase());
       const pass = arraysEqual(got, target);
@@ -2135,16 +2156,20 @@ function spatialLevel(level, doSave = true){
           <button id="no">No</button>
         </div>
         <div id="phase" class="muted center">Memorize…</div>
+        <div id="timer" class="muted center" style="font-size:1.5rem;color:var(--warn);display:none"></div>
       </div>`;
     const bubble = $('#bubble'), photo=$('#photo'), phase=$('#phase');
     const tris = Array.from(document.querySelectorAll('.tri'));
+    const timerEl = $('#timer');
     let respOk=0;
+    const useTimer = prefs.get().timePressure;
 
+    const displayTime = prefs.get().fastTempo ? 800 : 1200;
     for (const item of seq){
       tris.forEach(t=>t.classList.remove('mark'));
       bubble.textContent = item.letter; photo.textContent = item.pic;
       const t = tris.find(x=>x.dataset.pos===item.pos); t.classList.add('mark');
-      await wait(1200); t.classList.remove('mark'); bubble.textContent = '…'; photo.textContent = '…';
+      await wait(displayTime); t.classList.remove('mark'); bubble.textContent = '…'; photo.textContent = '…';
       phase.textContent = 'Does picture start with the letter?';
       const ok = await yesNo(); if (ok === item.match) respOk++;
       phase.textContent = 'Memorize…'; await wait(300);
@@ -2153,10 +2178,31 @@ function spatialLevel(level, doSave = true){
     // Recall phase
     phase.textContent = 'Recall: click positions in order'; bubble.textContent = '↺'; photo.textContent = 'Recall';
     let recallIdx=0; const needed = seq.map(s=>s.pos);
+    let recallInterval = null;
+
+    // Time Pressure timer for recall
+    if (useTimer) {
+      const timeLimit = 8 + (level * 2); // 10-16 seconds based on level
+      let timeRemaining = timeLimit;
+      timerEl.style.display = 'block';
+      timerEl.textContent = `⏱️ ${timeRemaining}s`;
+      recallInterval = setInterval(() => {
+        timeRemaining--;
+        timerEl.textContent = `⏱️ ${timeRemaining}s`;
+        if (timeRemaining <= 3) timerEl.style.color = 'var(--err)';
+        if (timeRemaining <= 0) {
+          clearInterval(recallInterval);
+          if(doSave) phase.innerHTML = `<span class="err">Time's up!</span>`;
+          setTimeout(()=>resolve({passed: false, verbalTotal: seq.length, verbalCorrect: respOk, spatialOk: false}), 900);
+        }
+      }, 1000);
+    }
+
     tris.forEach(t=>{ t.classList.remove('mark','wrong','correct'); t.onclick = ()=>{
       if (recallIdx>=needed.length) return;
       const expect = needed[recallIdx];
       if (t.dataset.pos===expect){ t.classList.add('correct'); recallIdx++; if (recallIdx===needed.length){
+        if (recallInterval) clearInterval(recallInterval);
         const pass = respOk===seq.length;
         if (doSave) {
             phase.innerHTML = pass? `<span class="ok">Cleared</span>` : `<span class="warn">Order ok; verbal misses ${seq.length-respOk}</span>`;
@@ -2164,6 +2210,7 @@ function spatialLevel(level, doSave = true){
         // Return detailed result object
         setTimeout(()=>resolve({passed: pass, verbalTotal: seq.length, verbalCorrect: respOk, spatialOk: true}), 1000);
       }} else {
+          if (recallInterval) clearInterval(recallInterval);
           if(doSave) phase.innerHTML = `<span class="err">Wrong order</span>`;
           // Spatial failed
           setTimeout(()=>resolve({passed: false, verbalTotal: seq.length, verbalCorrect: respOk, spatialOk: false}), 900);
@@ -2203,6 +2250,7 @@ function crossModalLevel(level){
     seq.push({color, shape});
   }
   return new Promise(async resolve=>{
+    const useTimer = prefs.get().timePressure;
     screen.innerHTML = `
       <div class="stack">
         <h2>Cross-modal Binding – Level ${level}</h2>
@@ -2210,16 +2258,19 @@ function crossModalLevel(level){
         <div id="shape-display" class="center" style="min-height:120px"></div>
         <div id="recall-grid" class="center" style="flex-wrap:wrap;gap:10px;margin-top:10px"></div>
         <div id="phase" class="muted center">Memorize…</div>
+        <div id="timer" class="muted center" style="font-size:1.5rem;color:var(--warn);display:none"></div>
       </div>`;
     const shapeDisplay = $('#shape-display');
     const recallGrid = $('#recall-grid');
     const phase = $('#phase');
+    const timerEl = $('#timer');
 
+    const displayTime = prefs.get().fastTempo ? 800 : 1200;
     for (const item of seq){
       const clipPath = shapeClipPaths[item.shape] || 'none';
       const borderRadius = item.shape==='circle' ? '50%' : clipPath !== 'none' ? '0' : '10px';
       shapeDisplay.innerHTML = `<div class="shape" style="background-color:${item.color}; border-radius:${borderRadius}; clip-path:${clipPath}"></div>`;
-      await wait(1200);
+      await wait(displayTime);
       shapeDisplay.innerHTML = '';
       await wait(300);
     }
@@ -2230,6 +2281,26 @@ function crossModalLevel(level){
 
     let recallIdx=0;
     const needed = seq.map(s=>s.color);
+    let recallInterval = null;
+
+    // Time Pressure timer for recall
+    if (useTimer) {
+      const timeLimit = 8 + (level * 2); // 10-16 seconds based on level
+      let timeRemaining = timeLimit;
+      timerEl.style.display = 'block';
+      timerEl.textContent = `⏱️ ${timeRemaining}s`;
+      recallInterval = setInterval(() => {
+        timeRemaining--;
+        timerEl.textContent = `⏱️ ${timeRemaining}s`;
+        if (timeRemaining <= 3) timerEl.style.color = 'var(--err)';
+        if (timeRemaining <= 0) {
+          clearInterval(recallInterval);
+          phase.innerHTML = `<span class="err">Time's up!</span>`;
+          setTimeout(()=>resolve(false), 900);
+        }
+      }, 1000);
+    }
+
     document.querySelectorAll('#recall-grid .shape').forEach(el => {
       el.onclick = () => {
         if (recallIdx >= needed.length) return;
@@ -2238,10 +2309,12 @@ function crossModalLevel(level){
           el.style.border = '3px solid #35bf88';
           recallIdx++;
           if (recallIdx === needed.length){
+            if (recallInterval) clearInterval(recallInterval);
             phase.innerHTML = `<span class="ok">Cleared</span>`;
             setTimeout(()=>resolve(true), 1000);
           }
         } else {
+          if (recallInterval) clearInterval(recallInterval);
           el.style.border = '3px solid #d0657a';
           phase.innerHTML = `<span class="err">Wrong order</span>`;
           setTimeout(()=>resolve(false), 900);
@@ -2385,12 +2458,13 @@ async function blockN(n, secs=60, doSave = true){
         if(doSave){$('#hits').textContent=hits; $('#fa').textContent=fa;}
       }
     };
+    const stimTime = prefs.get().fastTempo ? 900 : 1300;
     async function step(){
       if (i>=stream.length || (doSave && parseInt(timerEl.textContent,10) <= 0)){ finish(); return; }
       stim.textContent=stream[i];
       stimStart = performance.now();
       canPress=true;
-      await wait(1300);
+      await wait(stimTime);
       const target=(i>=n)&&(stream[i]===stream[i-n]); if (target&&canPress){ miss++; if(doSave) $('#miss').textContent=miss; }
       canPress=false; i++; await wait(250); step();
     }
@@ -2575,6 +2649,7 @@ async function dualNBackBlock(n, secs) {
 
     function cleanup() { document.removeEventListener('keydown', keyHandler); clearInterval(timerInterval); }
 
+    const stimTime = prefs.get().fastTempo ? 1800 : 2500;
     async function step() {
       if (idx >= posStream.length || parseInt(timerEl.textContent, 10) <= 0) { finish(); return; }
       const pos = posStream[idx], letter = audioStream[idx];
@@ -2583,7 +2658,7 @@ async function dualNBackBlock(n, secs) {
       speakLetter(letter);
       canPressPos = true;
       canPressAudio = true;
-      await wait(2500);
+      await wait(stimTime);
       const isPosTarget = idx >= n && posStream[idx] === posStream[idx - n];
       const isAudioTarget = idx >= n && audioStream[idx] === audioStream[idx - n];
       if (isPosTarget && canPressPos) posMiss++;
@@ -2759,6 +2834,7 @@ async function audioNBackBlock(n, trials) {
       }
     };
 
+    const responseTime = prefs.get().fastTempo ? 800 : 1200;
     async function step() {
       if (i >= stream.length) { finish(); return; }
 
@@ -2771,7 +2847,7 @@ async function audioNBackBlock(n, trials) {
       await wait(500);
       audioVisual.style.opacity = '0.3';
 
-      await wait(1200);
+      await wait(responseTime);
       const target = (i >= n) && (stream[i] === stream[i - n]);
       if (target && canPress) {
         miss++;
