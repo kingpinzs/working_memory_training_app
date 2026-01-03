@@ -50,12 +50,12 @@
 
 **Improvements:**
 
-| Change | Description | Effort |
-|--------|-------------|--------|
-| Personal best badges | Show "Best: L4" on task cards | Low |
-| Recommendation highlight | Subtle border or icon on recommended tasks | Low |
-| Quick start button | One-tap to start Coach Session | Low |
-| Session estimate | Show "~5 min" or "~15 min" on cards | Low |
+| Change | Description | Effort | Status |
+|--------|-------------|--------|--------|
+| Personal best badges | Show "Best: L4" on task cards | Low | ✅ Phase 1 |
+| Recommendation highlight | Subtle border or icon on recommended tasks | Low | ✅ Session 8 |
+| Quick start button | One-tap to start Coach Session | Low | ✅ Session 8 |
+| Session estimate | Show "~5 min" or "~15 min" on cards | Low | ✅ Session 8 |
 
 ### 2.2 Dashboard Improvements
 
@@ -66,12 +66,12 @@
 
 **Improvements:**
 
-| Change | Description | Effort |
-|--------|-------------|--------|
-| Larger streak calendar | Increase cell size from 10px to 14px | Low |
-| Trend arrows | Add up/down/flat arrows next to domain scores | Low |
-| Weekly summary card | "This week: 5 sessions, +3% attention" | Medium |
-| Touch-friendly calendar | Larger tap targets for mobile | Low |
+| Change | Description | Effort | Status |
+|--------|-------------|--------|--------|
+| Larger streak calendar | Increase cell size from 10px to 14px | Low | ✅ Session 8 |
+| Trend arrows | Add up/down/flat arrows next to domain scores | Low | ✅ Phase 2 |
+| Weekly summary card | "This week: 5 sessions, +3% attention" | Medium | ✅ Phase 4 |
+| Touch-friendly calendar | Larger tap targets for mobile | Low | ✅ Session 8 |
 
 ### 2.3 Task Feedback Improvements
 
@@ -82,12 +82,12 @@
 
 **Improvements:**
 
-| Change | Description | Effort |
-|--------|-------------|--------|
-| Task completion animation | Brief celebratory animation on success | Low |
-| Performance summary | "You scored 80% - 5% better than last time" | Medium |
-| Encouragement messages | Context-aware tips for improvement | Medium |
-| Next action suggestion | "Try again" or "Move to next task" buttons | Low |
+| Change | Description | Effort | Status |
+|--------|-------------|--------|--------|
+| Task completion animation | Brief celebratory animation on success | Low | ✅ Phase 4 |
+| Performance summary | "You scored 80% - 5% better than last time" | Medium | ✅ Phase 2 |
+| Encouragement messages | Context-aware tips for improvement | Medium | ✅ Phase 2 |
+| Next action suggestion | "Try again" or "Move to next task" buttons | Low | ❌ Deferred |
 
 ### 2.4 Mobile Experience
 
@@ -95,12 +95,12 @@
 
 **Improvements:**
 
-| Change | Description | Effort |
-|--------|-------------|--------|
-| Larger touch targets | Minimum 44px for buttons/taps | Low |
-| Swipe navigation | Swipe left/right between tabs | Medium |
-| Responsive task layout | Stack elements vertically on small screens | Medium |
-| Hide keyboard on task start | Auto-dismiss keyboard in N-Back | Low |
+| Change | Description | Effort | Status |
+|--------|-------------|--------|--------|
+| Larger touch targets | Minimum 44px for buttons/taps | Low | ✅ Phase 1 |
+| Swipe navigation | Swipe left/right between tabs | Medium | ❌ Deferred |
+| Responsive task layout | Stack elements vertically on small screens | Medium | ❌ Deferred |
+| Hide keyboard on task start | Auto-dismiss keyboard in N-Back | Low | ❌ Deferred |
 
 ### 2.5 Keyboard Shortcuts
 
@@ -132,12 +132,12 @@
 
 ### 3.2 Recommended Additions
 
-| Improvement | Description | Effort |
-|-------------|-------------|--------|
-| Reduced motion option | Respect prefers-reduced-motion | Low |
-| High contrast mode | Alternative color scheme | Medium |
-| Focus visible enhancement | More visible focus rings | Low |
-| Skip link | Jump to main content (if needed) | Low |
+| Improvement | Description | Effort | Status |
+|-------------|-------------|--------|--------|
+| Reduced motion option | Respect prefers-reduced-motion | Low | ✅ Phase 4 |
+| High contrast mode | Alternative color scheme | Medium | ✅ Phase 7 |
+| Focus visible enhancement | More visible focus rings | Low | ✅ Exists |
+| Skip link | Jump to main content (if needed) | Low | ❌ Deferred |
 
 ### 3.3 Reduced Motion Implementation
 
@@ -180,12 +180,12 @@
 
 ### 4.4 Micro-interactions
 
-| Interaction | Description | Effort |
-|-------------|-------------|--------|
-| Button hover effects | Subtle scale/color change | Low |
-| Card hover effects | Slight elevation change | Low |
-| Tab transition | Smooth fade between views | Low |
-| Score increment animation | Count-up animation | Medium |
+| Interaction | Description | Effort | Status |
+|-------------|-------------|--------|--------|
+| Button hover effects | Subtle scale/color change | Low | ✅ Phase 4 |
+| Card hover effects | Slight elevation change | Low | ✅ Phase 4 |
+| Tab transition | Smooth fade between views | Low | ❌ Deferred |
+| Score increment animation | Count-up animation | Medium | ❌ Deferred |
 
 ---
 
@@ -226,11 +226,11 @@
 
 ### Enhanced Personalization
 
-| Persona | UX Enhancement | Effort |
-|---------|----------------|--------|
-| Struggler | Encouraging messages, celebrate small wins | Low |
-| Competitor | Show rankings, challenge callouts | Medium |
-| Scientist | More detailed analytics, raw numbers | Medium |
+| Persona | UX Enhancement | Effort | Status |
+|---------|----------------|--------|--------|
+| Struggler | Encouraging messages, celebrate small wins | Low | ✅ Phase 2 |
+| Competitor | Show rankings, challenge callouts | Medium | ✅ Phase 2 |
+| Scientist | More detailed analytics, raw numbers | Medium | ✅ Phase 6 |
 
 ### Example: Struggler Encouragement
 
@@ -257,18 +257,18 @@ On Dashboard:
 
 ## 7. Priority Matrix
 
-| Improvement | Effort | Impact | Priority |
-|-------------|--------|--------|----------|
-| Personal best badges | Low | Medium | P1 |
-| Trend arrows on dashboard | Low | Medium | P1 |
-| Larger touch targets | Low | Medium | P1 |
-| Task completion animation | Low | Low | P2 |
-| Performance comparison | Medium | Medium | P2 |
-| Weekly summary card | Medium | Medium | P2 |
-| Swipe navigation | Medium | Low | P3 |
-| Persona-specific messages | Medium | Medium | P2 |
-| High contrast mode | Medium | Low | P3 |
-| BrainTok swipe UI | High | Medium | P2 |
+| Improvement | Effort | Impact | Priority | Status |
+|-------------|--------|--------|----------|--------|
+| Personal best badges | Low | Medium | P1 | ✅ Phase 1 |
+| Trend arrows on dashboard | Low | Medium | P1 | ✅ Phase 2 |
+| Larger touch targets | Low | Medium | P1 | ✅ Phase 1 |
+| Task completion animation | Low | Low | P2 | ✅ Phase 4 |
+| Performance comparison | Medium | Medium | P2 | ✅ Phase 2 |
+| Weekly summary card | Medium | Medium | P2 | ✅ Phase 4 |
+| Swipe navigation | Medium | Low | P3 | ❌ Deferred |
+| Persona-specific messages | Medium | Medium | P2 | ✅ Phase 2 |
+| High contrast mode | Medium | Low | P3 | ✅ Phase 7 |
+| BrainTok swipe UI | High | Medium | P2 | ✅ Phase 5 |
 
 ---
 
