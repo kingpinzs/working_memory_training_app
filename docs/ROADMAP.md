@@ -132,12 +132,14 @@ This roadmap builds on the existing Working Memory Lab application. Each phase i
 
 ## Future Phases (Backlog)
 
-### Phase 5: BrainTok MVP
+### Phase 5: BrainTok MVP ✅ COMPLETE
 **Estimated Effort:** 8-12 hours
-- Swipeable card container
-- Math Flash micro-task
-- Memory Flash micro-task
-- Word Match micro-task
+**Status:** ✅ COMPLETE (January 2, 2026)
+- ✅ Swipeable card container with touch/mouse gestures
+- ✅ Math Flash micro-task (verify equations)
+- ✅ Memory Flash micro-task (sequence matching)
+- ✅ Word Match micro-task (category matching)
+- ✅ Progress dots, feedback animations, scoring
 
 ### Phase 6: Advanced Features
 **Estimated Effort:** 10-15 hours

@@ -89,6 +89,25 @@
     *,*::before,*::after{animation-duration:0.01ms !important;animation-iteration-count:1 !important;transition-duration:0.01ms !important}
     .calendar-day:hover,.domain-card:hover,button:hover,.btn:hover{transform:none}
   }
+  /* Phase 5: BrainTok swipeable cards */
+  .braintok-container{position:relative; height:400px; width:100%; max-width:350px; margin:0 auto; perspective:1000px}
+  .braintok-card{position:absolute; top:0; left:0; right:0; height:100%; background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:24px; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; transition:transform .3s ease, opacity .3s ease; touch-action:pan-y; user-select:none; cursor:grab}
+  .braintok-card:active{cursor:grabbing}
+  .braintok-card.swiping{transition:none}
+  .braintok-card.swipe-left{transform:translateX(-120%) rotate(-15deg); opacity:0}
+  .braintok-card.swipe-right{transform:translateX(120%) rotate(15deg); opacity:0}
+  .braintok-card.swipe-up{transform:translateY(-120%) scale(0.8); opacity:0}
+  .braintok-card .task-icon{font-size:48px; margin-bottom:16px}
+  .braintok-card .task-question{font-size:28px; font-weight:700; margin-bottom:24px}
+  .braintok-card .task-hint{font-size:14px; color:var(--muted)}
+  .braintok-progress{display:flex; justify-content:center; gap:8px; margin-top:20px}
+  .braintok-progress .dot{width:10px; height:10px; border-radius:50%; background:var(--line)}
+  .braintok-progress .dot.active{background:var(--brand)}
+  .braintok-progress .dot.done{background:var(--ok)}
+  .braintok-actions{display:flex; justify-content:center; gap:16px; margin-top:16px}
+  .braintok-actions button{min-width:80px; font-size:24px; padding:12px 20px; border-radius:12px}
+  .braintok-feedback{position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:64px; animation:feedbackPop .4s ease-out forwards; pointer-events:none}
+  @keyframes feedbackPop{0%{transform:translate(-50%,-50%) scale(0); opacity:1}50%{transform:translate(-50%,-50%) scale(1.2)}100%{transform:translate(-50%,-50%) scale(1); opacity:0}}
 </style>
 </head>
 <body onload="initializeApp()">
@@ -796,16 +815,220 @@ function drawLifestyle() {
   };
 }
 
+/* ---------- BrainTok Micro-Tasks ---------- */
+const brainTokTasks = {
+  mathFlash: () => {
+    const ops = ['+', '-', '×'];
+    const op = ops[Math.floor(Math.random() * ops.length)];
+    let a, b, answer, shown;
+    if (op === '+') {
+      a = Math.floor(Math.random() * 50) + 10;
+      b = Math.floor(Math.random() * 50) + 10;
+      answer = a + b;
+    } else if (op === '-') {
+      a = Math.floor(Math.random() * 50) + 30;
+      b = Math.floor(Math.random() * 30) + 5;
+      answer = a - b;
+    } else {
+      a = Math.floor(Math.random() * 12) + 2;
+      b = Math.floor(Math.random() * 12) + 2;
+      answer = a * b;
+    }
+    const isCorrect = Math.random() > 0.5;
+    shown = isCorrect ? answer : answer + (Math.random() > 0.5 ? Math.floor(Math.random() * 10) + 1 : -Math.floor(Math.random() * 10) - 1);
+    return { type: 'mathFlash', icon: '🧮', question: `${a} ${op} ${b} = ${shown}`, hint: 'Is this correct?', correct: isCorrect };
+  },
+  memoryFlash: () => {
+    const sequences = ['🍎🍊🍋', '🔴🟢🔵', '⭐🌙☀️', '🐶🐱🐭', '🚗🚌🚀'];
+    const seq = sequences[Math.floor(Math.random() * sequences.length)];
+    const chars = [...seq];
+    const shuffled = [...chars].sort(() => Math.random() - 0.5);
+    const isMatch = Math.random() > 0.5;
+    const shown = isMatch ? seq : shuffled.join('');
+    return { type: 'memoryFlash', icon: '🧠', question: seq, secondQuestion: shown, hint: 'Same sequence?', correct: isMatch, twoPhase: true };
+  },
+  wordMatch: () => {
+    const categories = {
+      'Animals': ['dog', 'cat', 'bird', 'fish', 'lion'],
+      'Colors': ['red', 'blue', 'green', 'yellow', 'purple'],
+      'Foods': ['apple', 'bread', 'cheese', 'pizza', 'salad'],
+      'Numbers': ['one', 'two', 'three', 'four', 'five']
+    };
+    const catNames = Object.keys(categories);
+    const cat = catNames[Math.floor(Math.random() * catNames.length)];
+    const words = categories[cat];
+    const word = words[Math.floor(Math.random() * words.length)];
+    const isMatch = Math.random() > 0.5;
+    const shownCat = isMatch ? cat : catNames.filter(c => c !== cat)[Math.floor(Math.random() * (catNames.length - 1))];
+    return { type: 'wordMatch', icon: '📝', question: `"${word}" → ${shownCat}?`, hint: 'Correct category?', correct: isMatch };
+  }
+};
+
+let brainTokState = { cards: [], current: 0, score: 0, phase: 'question' };
+
+function generateBrainTokSession() {
+  const tasks = [];
+  const types = ['mathFlash', 'memoryFlash', 'wordMatch'];
+  for (let i = 0; i < 10; i++) {
+    const type = types[i % types.length];
+    tasks.push(brainTokTasks[type]());
+  }
+  return tasks;
+}
+
 function drawBrainTok() {
-    screen.innerHTML = `
+  brainTokState = { cards: [], current: 0, score: 0, phase: 'question' };
+  screen.innerHTML = `
     <div class="stack" style="text-align:center">
-        <h2 class="caps">BrainTok</h2>
-        <p class="muted">Short, engaging cognitive science insights. Coming soon!</p>
-        <div class="note">
-            <p><b>Did you know?</b> Working memory is like a mental whiteboard with limited space. Training can help you use that space more efficiently, not necessarily make it bigger.</p>
-        </div>
+      <h2 class="caps">BrainTok 🎯</h2>
+      <p class="muted">Quick micro-challenges. Swipe or tap to answer!</p>
+      <div class="card stack">
+        <div class="big">10 Quick Challenges</div>
+        <p class="muted">Math Flash • Memory Flash • Word Match</p>
+        <p class="muted" style="font-size:12px">⬆️ Yes/Correct • ⬇️ No/Wrong • ⬅️ Skip</p>
+        <button class="primary" id="startBrainTok">Start Session</button>
+      </div>
     </div>
-    `;
+  `;
+  document.getElementById('startBrainTok').onclick = startBrainTokSession;
+}
+
+function startBrainTokSession() {
+  brainTokState.cards = generateBrainTokSession();
+  brainTokState.current = 0;
+  brainTokState.score = 0;
+  brainTokState.phase = 'question';
+  renderBrainTokCard();
+}
+
+function renderBrainTokCard() {
+  const { cards, current, score, phase } = brainTokState;
+  if (current >= cards.length) {
+    finishBrainTok();
+    return;
+  }
+  const card = cards[current];
+  const showSecond = card.twoPhase && phase === 'answer';
+
+  screen.innerHTML = `
+    <div class="stack" style="text-align:center">
+      <div class="row" style="justify-content:space-between">
+        <span class="muted">${current + 1}/${cards.length}</span>
+        <span class="ok">Score: ${score}</span>
+      </div>
+      <div class="braintok-container">
+        <div class="braintok-card" id="btCard">
+          <div class="task-icon">${card.icon}</div>
+          <div class="task-question">${showSecond ? card.secondQuestion : card.question}</div>
+          <div class="task-hint">${card.twoPhase && phase === 'question' ? 'Remember this!' : card.hint}</div>
+        </div>
+      </div>
+      <div class="braintok-progress">
+        ${cards.map((_, i) => `<div class="dot ${i < current ? 'done' : i === current ? 'active' : ''}"></div>`).join('')}
+      </div>
+      ${card.twoPhase && phase === 'question' ? `
+        <div class="braintok-actions">
+          <button class="primary" id="btReady">Ready!</button>
+        </div>
+      ` : `
+        <div class="braintok-actions">
+          <button id="btNo" style="background:#d0657a">👎</button>
+          <button id="btSkip" style="background:#7a8fa8">⏭️</button>
+          <button id="btYes" style="background:#35bf88">👍</button>
+        </div>
+      `}
+    </div>
+  `;
+
+  const cardEl = document.getElementById('btCard');
+  if (card.twoPhase && phase === 'question') {
+    document.getElementById('btReady').onclick = () => {
+      brainTokState.phase = 'answer';
+      renderBrainTokCard();
+    };
+  } else {
+    document.getElementById('btYes').onclick = () => answerBrainTok(true);
+    document.getElementById('btNo').onclick = () => answerBrainTok(false);
+    document.getElementById('btSkip').onclick = () => skipBrainTok();
+    setupBrainTokSwipe(cardEl);
+  }
+}
+
+function setupBrainTokSwipe(el) {
+  let startX = 0, startY = 0, currentX = 0, currentY = 0, isDragging = false;
+
+  const start = (x, y) => { startX = x; startY = y; isDragging = true; el.classList.add('swiping'); };
+  const move = (x, y) => {
+    if (!isDragging) return;
+    currentX = x - startX;
+    currentY = y - startY;
+    el.style.transform = `translate(${currentX}px, ${currentY}px) rotate(${currentX * 0.05}deg)`;
+  };
+  const end = () => {
+    if (!isDragging) return;
+    isDragging = false;
+    el.classList.remove('swiping');
+    if (currentX > 80) { el.classList.add('swipe-right'); answerBrainTok(true); }
+    else if (currentX < -80) { el.classList.add('swipe-left'); skipBrainTok(); }
+    else if (currentY < -80) { el.classList.add('swipe-up'); answerBrainTok(true); }
+    else if (currentY > 80) { answerBrainTok(false); }
+    else { el.style.transform = ''; }
+    currentX = 0; currentY = 0;
+  };
+
+  el.onmousedown = e => start(e.clientX, e.clientY);
+  el.ontouchstart = e => start(e.touches[0].clientX, e.touches[0].clientY);
+  document.onmousemove = e => move(e.clientX, e.clientY);
+  document.ontouchmove = e => move(e.touches[0].clientX, e.touches[0].clientY);
+  document.onmouseup = end;
+  document.ontouchend = end;
+}
+
+function answerBrainTok(userSaidYes) {
+  const card = brainTokState.cards[brainTokState.current];
+  const isCorrect = userSaidYes === card.correct;
+  if (isCorrect) brainTokState.score++;
+  showBrainTokFeedback(isCorrect);
+  brainTokState.current++;
+  brainTokState.phase = 'question';
+  setTimeout(renderBrainTokCard, 400);
+}
+
+function skipBrainTok() {
+  brainTokState.current++;
+  brainTokState.phase = 'question';
+  setTimeout(renderBrainTokCard, 300);
+}
+
+function showBrainTokFeedback(isCorrect) {
+  const fb = document.createElement('div');
+  fb.className = 'braintok-feedback';
+  fb.textContent = isCorrect ? '✅' : '❌';
+  document.querySelector('.braintok-container').appendChild(fb);
+}
+
+function finishBrainTok() {
+  const { score, cards } = brainTokState;
+  const pct = Math.round((score / cards.length) * 100);
+  const encouragement = getEncouragement(pct >= 70, false);
+
+  screen.innerHTML = `
+    <div class="stack" style="text-align:center">
+      <h2 class="caps">BrainTok Complete! 🎉</h2>
+      <div class="card stack">
+        <div style="font-size:64px">${pct >= 80 ? '🏆' : pct >= 60 ? '⭐' : '💪'}</div>
+        <div class="big ok">${score}/${cards.length}</div>
+        <div class="muted">${pct}% accuracy</div>
+        <p>${encouragement}</p>
+      </div>
+      <div class="row" style="justify-content:center; gap:12px">
+        <button onclick="drawBrainTok()">Play Again</button>
+        <button class="primary" onclick="document.querySelector('[data-tab=launchpad]').click()">Done</button>
+      </div>
+    </div>
+  `;
+
+  toast(`BrainTok: ${score}/${cards.length} (${pct}%)`, pct >= 70 ? 'ok' : 'warn');
 }
 
 function drawCrossModal(){
