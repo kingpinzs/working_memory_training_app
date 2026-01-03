@@ -273,18 +273,18 @@ The PRD specifies 6 micro-tasks for BrainTok. Here's how they map to existing ex
 
 ## Part 4: Exercise Priority Matrix
 
-| Exercise | Type | Effort | Impact | Priority |
-|----------|------|--------|--------|----------|
-| N-Back rolling window | Enhancement | Low | Medium | P1 |
-| WM Span multiple lists | Enhancement | Low | Low | P2 |
-| Personal best tracking | Enhancement | Low | Medium | P1 |
-| Dual N-Back | New | High | High | P1 |
-| Corsi Block-Tapping | New | Medium | Medium | P2 |
-| Operation Span | New | Medium | Medium | P3 |
-| BrainTok Math Flash | New (micro) | Low | Medium | P2 |
-| BrainTok Memory Flash | New (micro) | Low | Medium | P2 |
-| Filter difficulty levels | Enhancement | Medium | Low | P3 |
-| 3-back N-back | Enhancement | Medium | Low | P3 |
+| Exercise | Type | Effort | Impact | Priority | Status |
+|----------|------|--------|--------|----------|--------|
+| N-Back rolling window | Enhancement | Low | Medium | P1 | ✅ Phase 1 |
+| WM Span multiple lists | Enhancement | Low | Low | P2 | ✅ Phase 2 |
+| Personal best tracking | Enhancement | Low | Medium | P1 | ✅ Phase 1 |
+| Dual N-Back | New | High | High | P1 | ✅ Phase 3 |
+| Corsi Block-Tapping | New | Medium | Medium | P2 | ✅ Phase 3 |
+| Operation Span | New | Medium | Medium | P3 | ✅ Phase 6 |
+| BrainTok Math Flash | New (micro) | Low | Medium | P2 | ✅ Phase 5 |
+| BrainTok Memory Flash | New (micro) | Low | Medium | P2 | ✅ Phase 5 |
+| Filter difficulty levels | Enhancement | Medium | Low | P3 | ❌ Deferred |
+| 3-back N-back | Enhancement | Medium | Low | P3 | ✅ Phase 6 |
 
 ---
 
