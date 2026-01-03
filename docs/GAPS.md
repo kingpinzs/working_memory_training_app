@@ -93,12 +93,12 @@
 
 ## 4. Technical Debt
 
-| Item | Description | Impact | Fix Effort |
-|------|-------------|--------|------------|
-| Section comments | Code lacks clear section delimiters | Low - navigation | 30min |
-| Helper function grouping | Parsing helpers scattered | Low - organization | 1h |
-| Schema versioning | No version in localStorage | Medium - future migrations | 1h |
-| Service worker versioning | Manual cache name update | Low - deployment friction | 30min |
+| Item | Description | Impact | Fix Effort | Status |
+|------|-------------|--------|------------|--------|
+| Section comments | Code lacks clear section delimiters | Low - navigation | 30min | ✅ Phase 1 |
+| Helper function grouping | Parsing helpers scattered | Low - organization | 1h | ❌ Deferred |
+| Schema versioning | No version in localStorage | Medium - future migrations | 1h | ❌ Deferred |
+| Service worker versioning | Manual cache name update | Low - deployment friction | 30min | ✅ Phase 1 |
 
 ---
 
@@ -106,29 +106,29 @@
 
 ### Visual Polish
 
-| Item | Description | Effort |
-|------|-------------|--------|
-| Task completion animation | Brief celebration on success | 1h |
-| Score increment animation | Count-up numbers | 2h |
-| Button hover effects | Subtle feedback | 30min |
-| Card hover effects | Slight elevation | 30min |
+| Item | Description | Effort | Status |
+|------|-------------|--------|--------|
+| Task completion animation | Brief celebration on success | 1h | ✅ Phase 4 |
+| Score increment animation | Count-up numbers | 2h | ❌ Deferred |
+| Button hover effects | Subtle feedback | 30min | ✅ Phase 4 |
+| Card hover effects | Slight elevation | 30min | ✅ Phase 4 |
 
 ### UX Polish
 
-| Item | Description | Effort |
-|------|-------------|--------|
-| Larger touch targets | 44px minimum | 1h |
-| Empty state illustrations | Better visuals for empty sections | 2h |
-| Performance comparison | "5% better than last time" | 2h |
-| Encouragement messages | Persona-based feedback | 2h |
+| Item | Description | Effort | Status |
+|------|-------------|--------|--------|
+| Larger touch targets | 44px minimum | 1h | ✅ Phase 1 |
+| Empty state illustrations | Better visuals for empty sections | 2h | ❌ Deferred |
+| Performance comparison | "5% better than last time" | 2h | ✅ Phase 2 |
+| Encouragement messages | Persona-based feedback | 2h | ✅ Phase 2 |
 
 ### Accessibility Polish
 
-| Item | Description | Effort |
-|------|-------------|--------|
-| Reduced motion support | prefers-reduced-motion query | 30min |
-| Enhanced focus rings | More visible focus states | 30min |
-| High contrast option | Alternative colors | 3h |
+| Item | Description | Effort | Status |
+|------|-------------|--------|--------|
+| Reduced motion support | prefers-reduced-motion query | 30min | ✅ Phase 4 |
+| Enhanced focus rings | More visible focus states | 30min | ✅ Exists |
+| High contrast option | Alternative colors | 3h | ✅ Phase 7 |
 
 ---
 
