@@ -3017,8 +3017,21 @@ async function runFilterPos(){
           const pb = isPersonalBest('filterPos', {acc: accFinal, time: parseFloat(secs)});
           const isGood = accFinal >= 80 && parseFloat(secs) <= 30; // 80%+ in under 30s is good
           const encourage = getEncouragement(isGood, pb);
-          $('#done').innerHTML = `<span class="ok">Done:</span> ${correct}/${clicks} in <b>${secs}s</b>${pb ? ' 🏆' : ''} · ${encourage}`;
-          store.push('filterPos',{scoreStr:`${correct}/${clicks} in ${secs}s`, acc:accFinal, time:parseFloat(secs), personalBest: pb});
+          // Calculate perfect session streak
+          const isPerfect = accFinal === 100;
+          const prevScores = store.get()['filterPos'] || [];
+          let perfectStreak = 0;
+          if (isPerfect) {
+            // Count backwards from most recent for consecutive perfect sessions
+            for (let i = prevScores.length - 1; i >= 0; i--) {
+              if (prevScores[i].acc === 100) perfectStreak++;
+              else break;
+            }
+            perfectStreak++; // Add this session
+          }
+          const streakText = isPerfect && perfectStreak >= 2 ? ` 🔥 ${perfectStreak} perfect streak!` : '';
+          $('#done').innerHTML = `<span class="ok">Done:</span> ${correct}/${clicks} in <b>${secs}s</b>${pb ? ' 🏆' : ''}${streakText} · ${encourage}`;
+          store.push('filterPos',{scoreStr:`${correct}/${clicks} in ${secs}s`, acc:accFinal, time:parseFloat(secs), personalBest: pb, perfectStreak: isPerfect ? perfectStreak : 0});
           setTimeout(resolve, 500);
         }
       };
