@@ -188,8 +188,8 @@ Profile contains:
 ## 7. What's Broken or Missing (FIX/ADD THESE)
 
 ### Bugs/Issues
-- **BrainTok tab:** Just shows placeholder text, no functionality
-- **Duplicate event listeners:** Some PWA event handlers registered twice (beforeinstallprompt)
+- **BrainTok tab:** ✅ FIXED - Full BrainTok with 3 micro-tasks (Phase 5)
+- **Duplicate event listeners:** ✅ FIXED - Consolidated PWA handlers (Session 9)
 - **Profile validation survey:** Logic exists but trigger condition unclear
 
 ### Missing Features (from PRD)
