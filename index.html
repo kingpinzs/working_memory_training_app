@@ -1734,7 +1734,8 @@ const spanListSets = {
   2: [["Bun","Car","Tip"], ["Hat","Pin","Mud"], ["Red","Jam","Fog"]],
   3: [["Dab","Pig","Top","Net"], ["Gum","Bat","Lip","Cot"], ["Jar","Web","Oak","Hut"]],
   4: [["Pen","Cup","Mat","Sun","Log"], ["Tap","Fox","Rim","Bag","Dew"], ["Nut","Elk","Pod","Tin","Hem"]],
-  5: [["Box","Hat","Key","Rug","Web","Gas"], ["Mud","Fin","Orb","Zip","Cow","Jab"], ["Owl","Den","Wax","Ivy","Mob","Tar"]]
+  5: [["Box","Hat","Key","Rug","Web","Gas"], ["Mud","Fin","Orb","Zip","Cow","Jab"], ["Owl","Den","Wax","Ivy","Mob","Tar"]],
+  6: [["Arm","Bed","Cup","Dot","Egg","Fog","Gym"], ["Bat","Cot","Dew","Elk","Fig","Gum","Hex"], ["Ant","Bay","Cub","Den","Elm","Fin","Gap"]]
 };
 // Helper to get random word list for a level
 function getSpanWords(level) {
@@ -1742,7 +1743,7 @@ function getSpanWords(level) {
   return sets[Math.floor(Math.random() * sets.length)];
 }
 // Backward compatibility alias
-const spanLists = { 1: spanListSets[1][0], 2: spanListSets[2][0], 3: spanListSets[3][0], 4: spanListSets[4][0], 5: spanListSets[5][0] };
+const spanLists = { 1: spanListSets[1][0], 2: spanListSets[2][0], 3: spanListSets[3][0], 4: spanListSets[4][0], 5: spanListSets[5][0], 6: spanListSets[6][0] };
 const wordBank = {
   positive:["ecstatic","thankful","friendly","sunny","bright","inspire","safe","delight","fortunate"],
   negative:["downer","afraid","anguish","mad","guilty","coerced","dismal"],
@@ -1852,7 +1853,7 @@ updateLaunchpadPBs();
 
 /* ---------- 1) WM Span ---------- */
 async function runSpan(doSave = true){
-  const levels = [1,2,3,4,5];
+  const levels = [1,2,3,4,5,6];
   let bestLevel = 0;
   for (const lv of levels){
     const words = getSpanWords(lv); // Use random word list for variety
@@ -3174,7 +3175,7 @@ function calculateWeeklyStats(storeData) {
   const allSessions = Object.entries(storeData).flatMap(([key, arr]) =>
     (arr || []).map(r => {
       let score = null;
-      if (key === 'span') score = ((r.bestLevel ?? r.level ?? 1) / 5) * 100;
+      if (key === 'span') score = ((r.bestLevel ?? r.level ?? 1) / 6) * 100;
       else if (key === 'nback') score = r.acc2 ?? r.acc1 ?? parseNAcc(r.scoreStr);
       else if (key === 'dualNback') score = r.posAcc ?? 0;
       else if (key === 'filterPos') score = r.acc ?? parseFilterAcc(r.scoreStr);
@@ -3230,7 +3231,7 @@ function calculateDomainScores(storeData, profile) {
         if (r.type === 'filterPos') return r.acc ?? parseFilterAcc(r.scoreStr) ?? 50;
         if (r.type === 'span') {
           const level = r.bestLevel ?? r.level ?? parseSpanFromScore(r.scoreStr);
-          return Math.min(100, (level / 5) * 100); // Level 5 = 100%
+          return Math.min(100, (level / 6) * 100); // Level 6 = 100%
         }
         if (r.type === 'mult') return r.acc ?? parseMultAcc(r.scoreStr) ?? 50;
         if (r.type === 'opSpan') return r.letterAcc ?? 50;
@@ -3362,7 +3363,7 @@ function drawDomainChart(domain) {
     if (r.type === 'filterPos') return r.acc ?? parseFilterAcc(r.scoreStr) ?? 50;
     if (r.type === 'span') {
       const level = r.bestLevel ?? r.level ?? parseSpanFromScore(r.scoreStr);
-      return Math.min(100, (level / 5) * 100);
+      return Math.min(100, (level / 6) * 100);
     }
     if (r.type === 'corsi') return (r.span / 7) * 100;
     if (r.type === 'mult') return r.acc ?? parseMultAcc(r.scoreStr) ?? 50;
@@ -3893,7 +3894,7 @@ function calculateLifestyleCorrelations(taskData, lifestyleData) {
         performance = session.acc2 || session.acc1 || parseNAcc(session.scoreStr) || 0;
       } else if (session.type === 'span') {
         const level = session.bestLevel || session.level || parseSpanFromScore(session.scoreStr) || 0;
-        performance = (level / 5) * 100; // Normalize to 0-100
+        performance = (level / 6) * 100; // Normalize to 0-100 (max 6 levels)
       } else if (session.type === 'spatial') {
         const cleared = session.cleared || 0;
         performance = (cleared / 4) * 100; // Normalize to 0-100 (max 4 levels)
