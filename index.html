@@ -541,8 +541,21 @@ function drawLaunchpad(){
         <h2 class="caps">Welcome to Working Memory Lab</h2>
         <button class="primary" onclick="openRealWorldModal()">🌟 Log a Win</button>
       </div>
+
+      <!-- Quick Start Coach Session -->
+      <div class="card" style="background:linear-gradient(135deg, #1a3a2e 0%, #0d1f18 100%); border-color:#2a5a42">
+        <div class="row" style="justify-content:space-between; align-items:center">
+          <div>
+            <div class="caps tight" style="color:#6ad3aa">Quick Start</div>
+            <div style="font-size:18px; font-weight:600; margin-top:4px">Coach Session</div>
+            <div class="muted" style="font-size:13px; margin-top:4px">~${profileStore.get()?.preferences?.sessionLength === 'deep' ? '15' : '5'} min • Adaptive difficulty • Personalized tasks</div>
+          </div>
+          <button class="primary" onclick="runCoachSession()" style="font-size:16px; padding:12px 24px">▶ Start</button>
+        </div>
+      </div>
+
       <div class="note">
-        <div class="caps">Assessments</div>
+        <div class="caps">Assessments <span class="muted" style="font-weight:normal; font-size:11px">(~2-3 min each)</span></div>
         <ul>
           <li><b>WM Span (reverse):</b> see items, repeat in reverse order.</li>
           <li><b>Spatial+Verbal Bind:</b> remember triangle positions while judging picture initials.</li>
@@ -553,7 +566,7 @@ function drawLaunchpad(){
         </ul>
       </div>
       <div class="note">
-        <div class="caps">Drills</div>
+        <div class="caps">Drills <span class="muted" style="font-weight:normal; font-size:11px">(~1-2 min each)</span></div>
         <ul>
           <li><b>Filter the Positive:</b> click only positive words quickly & accurately.</li>
           <li><b>Mental Multiplication:</b> left→right rolling sum.</li>
@@ -3356,7 +3369,7 @@ function renderStreakCalendar(activityMap) {
   calendar.innerHTML = days.map(day => `
     <div class="calendar-day intensity-${day.intensity}" 
          title="${day.date}: ${day.count} session${day.count !== 1 ? 's' : ''}"
-         style="width:10px;height:10px;border-radius:2px;background:${
+         style="width:14px;height:14px;border-radius:3px;background:${
            day.intensity === 0 ? '#1c2432' : 
            day.intensity === 1 ? '#0e4429' :
            day.intensity === 2 ? '#006d32' :
