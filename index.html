@@ -1755,7 +1755,16 @@ const emoSad = ["sad","down","blue","teary","gloom"];
 const emoNeutral = ["chair","stone","window","paper","clock"];
 const shapeBank = {
   colors: ['#ff6666', '#66ff66', '#6666ff', '#ffff66', '#ff66ff', '#66ffff'],
-  shapes: ['square', 'circle', 'triangle']
+  shapes: ['square', 'circle', 'triangle', 'diamond', 'pentagon', 'star']
+};
+// Shape clip-paths for CSS rendering
+const shapeClipPaths = {
+  square: 'none',
+  circle: 'none',
+  triangle: 'polygon(50% 0, 0 100%, 100% 100%)',
+  diamond: 'polygon(50% 0, 100% 50%, 50% 100%, 0 50%)',
+  pentagon: 'polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%)',
+  star: 'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)'
 };
 
 /* ---------- Launch actions ---------- */
@@ -2025,7 +2034,9 @@ function crossModalLevel(level){
     const phase = $('#phase');
 
     for (const item of seq){
-      shapeDisplay.innerHTML = `<div class="shape" style="background-color:${item.color}; border-radius:${item.shape==='circle'?'50%':item.shape==='triangle'?'0':'10px'}; clip-path:${item.shape==='triangle'?'polygon(50% 0, 0 100%, 100% 100%)':'none'}"></div>`;
+      const clipPath = shapeClipPaths[item.shape] || 'none';
+      const borderRadius = item.shape==='circle' ? '50%' : clipPath !== 'none' ? '0' : '10px';
+      shapeDisplay.innerHTML = `<div class="shape" style="background-color:${item.color}; border-radius:${borderRadius}; clip-path:${clipPath}"></div>`;
       await wait(1200);
       shapeDisplay.innerHTML = '';
       await wait(300);
