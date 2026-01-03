@@ -4529,24 +4529,32 @@ window.toast = toast; // Expose for testing
 const pwaAnalyticsStore = new Store('wmLabPWAAnalytics', true); // Array-based for event tracking
 
 // PWA Installation Analytics
+// Consolidated handler - single deferredPrompt variable for both systems
 let deferredPrompt = null;
 
 window.addEventListener('beforeinstallprompt', (e) => {
+  console.log('[PWA] Install prompt available');
   // Prevent the mini-infobar from appearing on mobile
   e.preventDefault();
-  
-  // Store the event for later use
+
+  // Store the event for later use (single variable for all install UI)
   deferredPrompt = e;
-  
+
   // Track that prompt is available
   pwaAnalyticsStore.push({
     event: 'install_prompt_available',
     timestamp: new Date().toISOString(),
     userAgent: navigator.userAgent
   });
-  
+
   // Show custom install button if we have one
   showInstallButton();
+
+  // Also check if we should show the install banner
+  const state = pwaInstallState.get();
+  if (!state.installed && !state.dismissed) {
+    showInstallPrompt();
+  }
 });
 
 window.addEventListener('appinstalled', () => {
@@ -4670,8 +4678,7 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-// PWA Install Prompt
-let deferredInstallPrompt = null;
+// PWA Install Prompt State (uses deferredPrompt from consolidated handler above)
 const pwaInstallState = {
   get() {
     try {
@@ -4685,28 +4692,17 @@ const pwaInstallState = {
   }
 };
 
-// Capture the install prompt event
-window.addEventListener('beforeinstallprompt', (e) => {
-  console.log('[PWA] Install prompt available');
-  e.preventDefault(); // Prevent automatic prompt
-  deferredInstallPrompt = e;
-  
-  // Show custom install prompt at appropriate time
-  const state = pwaInstallState.get();
-  if (!state.installed && !state.dismissed) {
-    showInstallPrompt();
-  }
-});
+// NOTE: beforeinstallprompt handler is consolidated in PWA Analytics section above
 
-// Detect when app is installed
+// Additional appinstalled handler for install banner cleanup
 window.addEventListener('appinstalled', () => {
-  console.log('[PWA] App installed successfully');
-  deferredInstallPrompt = null;
+  console.log('[PWA] App installed - clearing install state');
+  deferredPrompt = null; // Use consolidated variable
   const state = pwaInstallState.get();
   state.installed = true;
   state.installedAt = new Date().toISOString();
   pwaInstallState.set(state);
-  
+
   // Hide any visible install prompts
   const banner = document.getElementById('pwa-install-banner');
   if (banner) banner.remove();
@@ -4775,19 +4771,19 @@ function showInstallPrompt() {
   
   // Install button handler
   document.getElementById('pwa-install').onclick = async () => {
-    if (!deferredInstallPrompt) {
+    if (!deferredPrompt) {
       toast('Install not available');
       banner.remove();
       return;
     }
     
     // Show the install prompt
-    deferredInstallPrompt.prompt();
-    
+    deferredPrompt.prompt();
+
     // Wait for the user's response
-    const { outcome } = await deferredInstallPrompt.userChoice;
+    const { outcome } = await deferredPrompt.userChoice;
     console.log('[PWA] User choice:', outcome);
-    
+
     if (outcome === 'accepted') {
       console.log('[PWA] User accepted install');
     } else {
@@ -4797,8 +4793,8 @@ function showInstallPrompt() {
       state.lastDismissed = new Date().toISOString();
       pwaInstallState.set(state);
     }
-    
-    deferredInstallPrompt = null;
+
+    deferredPrompt = null;
     banner.remove();
   };
   
