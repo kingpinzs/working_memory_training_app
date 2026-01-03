@@ -76,6 +76,19 @@
   .calendar-day:hover{transform:scale(1.2)}
   .domain-card{transition:all .2s}
   .domain-card:hover{transform:translateY(-2px); box-shadow:0 12px 24px rgba(0,0,0,.35); border-color:#3a4a66}
+  /* Phase 4.5: Enhanced button hover effects */
+  button,.btn,.chip,.pill{transition:all .15s ease}
+  button:hover,.btn:hover{transform:translateY(-1px); box-shadow:0 4px 12px rgba(0,0,0,.3)}
+  button:active,.btn:active{transform:translateY(0); box-shadow:none}
+  button.primary:hover{box-shadow:0 6px 16px rgba(59,83,119,.4)}
+  /* Phase 4.1: Task completion animation */
+  @keyframes successPulse{0%{transform:scale(1)}50%{transform:scale(1.05)}100%{transform:scale(1)}}
+  .task-success{animation:successPulse .4s ease-out}
+  /* Phase 4.2: Reduced motion support */
+  @media(prefers-reduced-motion:reduce){
+    *,*::before,*::after{animation-duration:0.01ms !important;animation-iteration-count:1 !important;transition-duration:0.01ms !important}
+    .calendar-day:hover,.domain-card:hover,button:hover,.btn:hover{transform:none}
+  }
 </style>
 </head>
 <body onload="initializeApp()">
@@ -515,15 +528,31 @@ function drawDashboard() {
   // Calculate streak data
   const streakData = updateStreak(s);
 
+  // Calculate weekly summary
+  const weeklyStats = calculateWeeklyStats(s);
+
+  // Show empty state if no sessions
+  const hasData = totalRuns > 0;
+
   screen.innerHTML = `
     <div class="stack">
       <div class="row" style="justify-content:space-between">
         <h2 class="caps">Analytics Dashboard</h2>
         <button onclick="viewProfile()">⚙️ Profile</button>
       </div>
-      
+
+      ${!hasData ? `
+      <!-- Empty State -->
+      <div class="card stack" style="text-align:center; padding:32px">
+        <div style="font-size:48px; margin-bottom:16px">🧠</div>
+        <h3 style="margin:0 0 8px 0">Start Training to See Progress</h3>
+        <p class="muted" style="margin:0 0 16px 0">Complete your first task to begin tracking your cognitive performance.</p>
+        <button class="primary" onclick="document.querySelector('[data-tab=launchpad]').click()">Go to Launchpad</button>
+      </div>
+      ` : ''}
+
       <!-- Cognitive Domain Scores -->
-      <div class="split">
+      <div class="split" ${!hasData ? 'style="opacity:0.5"' : ''}>
         <div class="card stack domain-card" data-domain="attention" style="cursor:pointer">
           <div class="caps tight">Attention</div>
           <div class="big">${domainScores.attention.current}%</div>
@@ -563,6 +592,39 @@ function drawDashboard() {
         </div>
         <div id="streak-calendar" class="streak-calendar"></div>
       </div>
+
+      <!-- Weekly Summary -->
+      ${hasData ? `
+      <div class="card stack">
+        <h3 class="caps tight">Weekly Summary 📊</h3>
+        <div class="split">
+          <div style="text-align:center">
+            <div class="caps tight muted">This Week</div>
+            <div class="big">${weeklyStats.thisWeek.sessions}</div>
+            <div class="muted">sessions</div>
+          </div>
+          <div style="text-align:center">
+            <div class="caps tight muted">Last Week</div>
+            <div class="big">${weeklyStats.lastWeek.sessions}</div>
+            <div class="muted">sessions</div>
+          </div>
+          <div style="text-align:center">
+            <div class="caps tight muted">Trend</div>
+            <div class="big ${weeklyStats.sessionChange >= 0 ? 'ok' : 'warn'}">${weeklyStats.sessionChange >= 0 ? '+' : ''}${weeklyStats.sessionChange}</div>
+            <div class="muted">sessions</div>
+          </div>
+        </div>
+        ${weeklyStats.thisWeek.avgScore !== null ? `
+        <div class="sep"></div>
+        <div class="row" style="justify-content:center; gap:24px">
+          <div><span class="muted">Avg Score:</span> <b>${weeklyStats.thisWeek.avgScore}%</b></div>
+          ${weeklyStats.scoreChange !== 0 ? `
+          <div class="${weeklyStats.scoreChange >= 0 ? 'ok' : 'warn'}">${weeklyStats.scoreChange >= 0 ? '↑' : '↓'} ${Math.abs(weeklyStats.scoreChange)}% vs last week</div>
+          ` : '<div class="muted">→ Same as last week</div>'}
+        </div>
+        ` : ''}
+      </div>
+      ` : ''}
 
       <!-- Real-World Wins -->
       <div class="card stack">
@@ -1433,18 +1495,20 @@ const shapeBank = {
 };
 
 /* ---------- Launch actions ---------- */
+let lastTask = null; // Track last task for R key retry
+function runTask(mode) {
+  lastTask = mode;
+  if (mode==='span') runSpan();
+  if (mode==='spatial') runSpatial();
+  if (mode==='crossmodal') runCrossModal();
+  if (mode==='nback') runNBack();
+  if (mode==='dualNback') runDualNBack();
+  if (mode==='corsi') runCorsi();
+  if (mode==='filterPos') runFilterPos();
+  if (mode==='mult') runMult();
+}
 document.querySelectorAll('[data-run]').forEach(b=>{
-  b.onclick = () => {
-    const mode = b.dataset.run;
-    if (mode==='span') runSpan();
-    if (mode==='spatial') runSpatial();
-    if (mode==='crossmodal') runCrossModal();
-    if (mode==='nback') runNBack();
-    if (mode==='dualNback') runDualNBack();
-    if (mode==='corsi') runCorsi();
-    if (mode==='filterPos') runFilterPos();
-    if (mode==='mult') runMult();
-  };
+  b.onclick = () => runTask(b.dataset.run);
 });
 
 // Display personal bests on launchpad buttons
@@ -2264,6 +2328,51 @@ function parseNAcc(s){ // fallback: compute rough acc1 from text H/M/FA
 }
 function parseFilterAcc(s){ const m=/(\d+)\/(\d+)/.exec(s||''); if(!m) return ''; return Math.round((+m[1]/+m[2])*100); }
 function parseMultAcc(s){ const m=/(\d+)\/(\d+)/.exec(s||''); if(!m) return ''; return Math.round((+m[1]/+m[2])*100); }
+
+/* ---------- Weekly Stats Calculation ---------- */
+function calculateWeeklyStats(storeData) {
+  const now = new Date();
+  const thisWeekStart = new Date(now);
+  thisWeekStart.setDate(now.getDate() - now.getDay());
+  thisWeekStart.setHours(0, 0, 0, 0);
+
+  const lastWeekStart = new Date(thisWeekStart);
+  lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+  const lastWeekEnd = new Date(thisWeekStart);
+
+  const allSessions = Object.entries(storeData).flatMap(([key, arr]) =>
+    (arr || []).map(r => {
+      let score = null;
+      if (key === 'span') score = ((r.bestLevel ?? r.level ?? 1) / 5) * 100;
+      else if (key === 'nback') score = r.acc2 ?? r.acc1 ?? parseNAcc(r.scoreStr);
+      else if (key === 'dualNback') score = r.posAcc ?? 0;
+      else if (key === 'filterPos') score = r.acc ?? parseFilterAcc(r.scoreStr);
+      else if (key === 'mult') score = r.acc ?? parseMultAcc(r.scoreStr);
+      else if (key === 'spatial') score = ((r.level ?? 1) / 4) * 100;
+      else if (key === 'corsi') score = ((r.maxSpan ?? 2) / 7) * 100;
+      return { ts: new Date(r.ts), score };
+    })
+  );
+
+  const thisWeekSessions = allSessions.filter(s => s.ts >= thisWeekStart);
+  const lastWeekSessions = allSessions.filter(s => s.ts >= lastWeekStart && s.ts < lastWeekEnd);
+
+  const calcAvg = (sessions) => {
+    const scores = sessions.map(s => s.score).filter(s => s !== null && !isNaN(s));
+    if (scores.length === 0) return null;
+    return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+  };
+
+  const thisWeekAvg = calcAvg(thisWeekSessions);
+  const lastWeekAvg = calcAvg(lastWeekSessions);
+
+  return {
+    thisWeek: { sessions: thisWeekSessions.length, avgScore: thisWeekAvg },
+    lastWeek: { sessions: lastWeekSessions.length, avgScore: lastWeekAvg },
+    sessionChange: thisWeekSessions.length - lastWeekSessions.length,
+    scoreChange: (thisWeekAvg !== null && lastWeekAvg !== null) ? thisWeekAvg - lastWeekAvg : 0
+  };
+}
 
 /* ---------- Analytics Functions ---------- */
 function calculateDomainScores(storeData, profile) {
@@ -3394,6 +3503,24 @@ document.addEventListener('keydown', (e) => {
     showKeyboardShortcuts();
     e.preventDefault();
   }
+
+  // C key - start Coach Session (only when on launchpad)
+  if (e.key.toLowerCase() === 'c' && !e.ctrlKey && !e.metaKey) {
+    const launchpadTab = document.querySelector('[data-tab="launchpad"]');
+    if (launchpadTab && launchpadTab.getAttribute('aria-selected') === 'true') {
+      runCoachSession();
+      e.preventDefault();
+    }
+  }
+
+  // R key - retry last task (only when on launchpad and have a lastTask)
+  if (e.key.toLowerCase() === 'r' && !e.ctrlKey && !e.metaKey) {
+    const launchpadTab = document.querySelector('[data-tab="launchpad"]');
+    if (launchpadTab && launchpadTab.getAttribute('aria-selected') === 'true' && lastTask) {
+      runTask(lastTask);
+      e.preventDefault();
+    }
+  }
 });
 
 function showKeyboardShortcuts() {
@@ -3435,6 +3562,14 @@ function showKeyboardShortcuts() {
       <div style="display: flex; justify-content: space-between">
         <span><kbd class="kbd">?</kbd></span>
         <span>Show this help</span>
+      </div>
+      <div style="display: flex; justify-content: space-between">
+        <span><kbd class="kbd">C</kbd></span>
+        <span>Start Coach Session</span>
+      </div>
+      <div style="display: flex; justify-content: space-between">
+        <span><kbd class="kbd">R</kbd></span>
+        <span>Retry last task</span>
       </div>
     </div>
     <div style="margin-top: 16px; height: 1px; background: #243043"></div>
