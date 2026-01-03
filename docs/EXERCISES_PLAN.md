@@ -44,7 +44,7 @@
 | Separate accuracy tracking | Track verbal accuracy and spatial accuracy independently | Low | ✅ Session 8 |
 | Level 4 | Add 5-item level for advanced users | Low | ✅ Phase 2 |
 | Partial credit mode | Award points for partially correct responses | Medium | ❌ Deferred |
-| Faster tempo option | Reduce display time for advanced users (1200ms -> 800ms) | Low | ❌ Deferred |
+| Faster tempo option | Reduce display time for advanced users (1200ms -> 800ms) | Low | ✅ Session 9 |
 | Position variety | Use 4 or 6 positions instead of always 3 triangles | Medium | ❌ Deferred |
 
 **Integration with Current System:**
@@ -66,7 +66,7 @@
 |-------------|-------------|--------|--------|
 | Level 4 | Add 5-item level | Low | ✅ Session 8 |
 | Audio cue option | Play color name as audio reinforcement | Medium | ❌ Deferred |
-| Time pressure mode | Add optional countdown for recall phase | Low | ❌ Deferred |
+| Time pressure mode | Add optional countdown for recall phase | Low | ✅ Session 9 |
 | Shape variety | Add more shapes (pentagon, star, diamond) | Low | ✅ Session 8 |
 
 ---
