@@ -138,21 +138,22 @@
 
 | Area | E2E Tests | Status |
 |------|-----------|--------|
-| Smoke tests | smoke.spec.js | Complete |
-| Core tasks | core-tasks.spec.js | Complete |
-| PWA functionality | pwa.spec.js | Complete |
-| PWA analytics | pwa-analytics.spec.js | In progress |
-| Persona survey | persona-survey.spec.js | New/untracked |
+| Smoke tests | smoke.spec.js | ✅ Complete |
+| Core tasks | core-tasks.spec.js | ✅ Complete |
+| PWA functionality | pwa.spec.js | ✅ Complete |
+| PWA analytics | pwa-analytics.spec.js | ✅ Complete |
+| Discovery Quiz | discovery-quiz.spec.js | ✅ Complete |
+| Persona survey | persona-survey.spec.js | ✅ Complete |
 
 ### Missing Test Coverage
 
-| Area | Priority |
-|------|----------|
-| Discovery Quiz full flow | P2 |
-| Profile retake flow | P3 |
-| Coach Session full flow | P2 |
-| Dashboard analytics | P3 |
-| Edge cases (quota, corruption) | P3 |
+| Area | Priority | Status |
+|------|----------|--------|
+| Discovery Quiz full flow | P2 | ✅ Covered in discovery-quiz.spec.js |
+| Profile retake flow | P3 | ❌ Deferred |
+| Coach Session full flow | P2 | ❌ Deferred (long-running test) |
+| Dashboard analytics | P3 | ❌ Deferred |
+| Edge cases (quota, corruption) | P3 | ❌ Deferred |
 
 ---
 
