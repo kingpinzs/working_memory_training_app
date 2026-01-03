@@ -1904,15 +1904,23 @@ function spanTrial(level, words, doSave = true){
 async function runSpatial(){
   let level = 1, cleared=0;
   const maxLevel = 4; // L1=2, L2=3, L3=4, L4=5 items
+  let totalVerbal = 0, totalVerbalCorrect = 0;
+  let totalSpatial = 0, totalSpatialCorrect = 0;
   while (level<=maxLevel){
-    const ok = await spatialLevel(level);
-    if (ok){ cleared++; level++; } else break;
+    const result = await spatialLevel(level);
+    totalVerbal += result.verbalTotal;
+    totalVerbalCorrect += result.verbalCorrect;
+    totalSpatial += 1;
+    if (result.spatialOk) totalSpatialCorrect++;
+    if (result.passed){ cleared++; level++; } else break;
   }
+  const verbalAcc = totalVerbal > 0 ? Math.round((totalVerbalCorrect / totalVerbal) * 100) : 0;
+  const spatialAcc = totalSpatial > 0 ? Math.round((totalSpatialCorrect / totalSpatial) * 100) : 0;
   const pb = isPersonalBest('spatial', cleared);
   const cmp = getPerformanceComparison('spatial', cleared);
   const isGood = cleared >= 2; // 2+ levels is good
   const encourage = getEncouragement(isGood, pb);
-  store.push('spatial',{level:level-1, cleared, scoreStr:`${cleared}/${maxLevel}`, personalBest: pb});
+  store.push('spatial',{level:level-1, cleared, scoreStr:`${cleared}/${maxLevel}`, verbalAcc, spatialAcc, personalBest: pb});
   toast(`Spatial+Verbal · ${cleared}/${maxLevel}${pb ? ' 🏆 ' : cmp ? cmp + ' · ' : ' · '}${encourage}`, pb ? 'ok' : isGood ? 'info' : 'info');
 }
 function spatialLevel(level, doSave = true){
@@ -1968,10 +1976,12 @@ function spatialLevel(level, doSave = true){
         if (doSave) {
             phase.innerHTML = pass? `<span class="ok">Cleared</span>` : `<span class="warn">Order ok; verbal misses ${seq.length-respOk}</span>`;
         }
-        setTimeout(()=>resolve(pass), 1000);
-      }} else { 
-          if(doSave) phase.innerHTML = `<span class="err">Wrong order</span>`; 
-          setTimeout(()=>resolve(false), 900); 
+        // Return detailed result object
+        setTimeout(()=>resolve({passed: pass, verbalTotal: seq.length, verbalCorrect: respOk, spatialOk: true}), 1000);
+      }} else {
+          if(doSave) phase.innerHTML = `<span class="err">Wrong order</span>`;
+          // Spatial failed
+          setTimeout(()=>resolve({passed: false, verbalTotal: seq.length, verbalCorrect: respOk, spatialOk: false}), 900);
       }
     };});
   });
