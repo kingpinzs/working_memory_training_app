@@ -210,6 +210,9 @@
 const $ = s => document.querySelector(s);
 const screen = $('#screen');
 
+// Schema versioning for future migrations
+const SCHEMA_VERSION = 1;
+
 function Store(key, isArray = false) {
   this.key = key;
   this.isArray = isArray;
@@ -312,6 +315,31 @@ store.reset = function() {
   drawLaunchpad();
   toast('Scores have been reset.');
 };
+
+// Schema migration function - runs on app load
+function migrateSchema() {
+  const s = store.get();
+  const currentVersion = s._schemaVersion || 0;
+
+  if (currentVersion < SCHEMA_VERSION) {
+    // Run migrations in order
+    // Version 1: Initial schema tracking (no data changes needed)
+    if (currentVersion < 1) {
+      console.log('[Migration] Setting schema version to 1');
+    }
+
+    // Future migrations would go here:
+    // if (currentVersion < 2) { ... }
+
+    // Update version
+    s._schemaVersion = SCHEMA_VERSION;
+    store.set(s);
+    console.log(`[Migration] Schema updated to version ${SCHEMA_VERSION}`);
+  }
+}
+
+// Run migration on load
+migrateSchema();
 
 // Personal best tracking helpers
 function getPersonalBest(taskKey, metric = 'bestLevel') {
