@@ -62,12 +62,12 @@
 
 **Specific Improvements:**
 
-| Improvement | Description | Effort |
-|-------------|-------------|--------|
-| Level 4 | Add 5-item level | Low |
-| Audio cue option | Play color name as audio reinforcement | Medium |
-| Time pressure mode | Add optional countdown for recall phase | Low |
-| Shape variety | Add more shapes (pentagon, star, diamond) | Low |
+| Improvement | Description | Effort | Status |
+|-------------|-------------|--------|--------|
+| Level 4 | Add 5-item level | Low | ✅ Session 8 |
+| Audio cue option | Play color name as audio reinforcement | Medium | ❌ Deferred |
+| Time pressure mode | Add optional countdown for recall phase | Low | ❌ Deferred |
+| Shape variety | Add more shapes (pentagon, star, diamond) | Low | ✅ Session 8 |
 
 ---
 
