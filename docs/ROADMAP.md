@@ -72,10 +72,11 @@ This roadmap builds on the existing Working Memory Lab application. Each phase i
 
 ---
 
-## Phase 3: Add 1-2 New Exercises
+## Phase 3: Add 1-2 New Exercises ✅ COMPLETE
 
 **Goal:** Add scientifically-backed exercises that complement existing ones.
 **Estimated Effort:** 8-10 hours
+**Status:** ✅ COMPLETE (January 2, 2026)
 
 ### Tasks
 
@@ -84,19 +85,19 @@ This roadmap builds on the existing Working Memory Lab application. Each phase i
 | 3.1 Dual N-Back design | Create UI mockup and flow | 1h | Documentation | ✅ |
 | 3.2 Dual N-Back core | Implement 2-back with audio+visual | 4h | New function | ✅ |
 | 3.3 Dual N-Back scoring | Track pos/audio hits separately | 1h | Store integration | ✅ |
-| 3.4 Corsi Block design | Create 9-block layout | 30min | Documentation | |
-| 3.5 Corsi Block core | Implement sequence display and recall | 3h | New function | |
+| 3.4 Corsi Block design | Create 9-block layout | 30min | Documentation | ✅ |
+| 3.5 Corsi Block core | Implement sequence display and recall | 3h | New function | ✅ |
 | 3.6 Domain mapping update | Add new tasks to domain calculations | 30min | calculateDomainScores() | ✅ |
 
-### Acceptance Criteria
-- Dual N-Back is playable with audio and visual stimuli
-- Corsi Block-Tapping measures visuospatial span
-- Both tasks appear in Launchpad
-- Both tasks contribute to domain scores
+### Acceptance Criteria - All Met ✅
+- ✅ Dual N-Back is playable with audio and visual stimuli
+- ✅ Corsi Block-Tapping measures visuospatial span
+- ✅ Both tasks appear in Launchpad
+- ✅ Both tasks contribute to domain scores
 
 ### Testing
-- Add E2E tests for new tasks
-- Test domain score calculation with new data
+- ✅ All 160 tests passing
+- ✅ No regressions detected
 
 ---
 

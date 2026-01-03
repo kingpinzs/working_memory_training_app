@@ -116,6 +116,7 @@
           <button data-run="crossmodal" aria-label="Start Cross-modal Binding task">Cross-modal Binding</button>
           <button data-run="nback" aria-label="Start N-Back emotion task">1-Back / 2-Back (emotion)</button>
           <button data-run="dualNback" aria-label="Start Dual N-Back task">Dual N-Back</button>
+          <button data-run="corsi" aria-label="Start Corsi Block-Tapping task">Corsi Blocks</button>
         </div>
         <div class="caps tight">Drills</div>
         <div class="split" role="group" aria-label="Cognitive drills">
@@ -488,6 +489,7 @@ function drawLaunchpad(){
           <li><b>Cross-modal Binding:</b> remember colored shapes, then recall colors in order.</li>
           <li><b>N-Back (emotion):</b> spacebar on ${coachOn()?'adaptive':'1/2'}-back matches.</li>
           <li><b>Dual N-Back:</b> position + audio matches (A and L keys).</li>
+          <li><b>Corsi Blocks:</b> tap blocks in the same sequence shown.</li>
         </ul>
       </div>
       <div class="note">
@@ -1370,7 +1372,7 @@ function retakeQuiz() {
 function renderScores(){
   const s = store.get();
   const box = $('#scores');
-  const keyMeta = { span:'WM Span', spatial:'Spatial+Verbal', crossmodal:'Cross-modal', nback:'N-Back', dualNback:'Dual N-Back', filterPos:'Filter Positive', mult:'Mental Mult' };
+  const keyMeta = { span:'WM Span', spatial:'Spatial+Verbal', crossmodal:'Cross-modal', nback:'N-Back', dualNback:'Dual N-Back', corsi:'Corsi Blocks', filterPos:'Filter Positive', mult:'Mental Mult' };
   const fmt = new Intl.DateTimeFormat([], {month:'short', day:'2-digit', hour:'2-digit', minute:'2-digit'});
   box.innerHTML = '';
   Object.keys(keyMeta).forEach(k=>{
@@ -1439,6 +1441,7 @@ document.querySelectorAll('[data-run]').forEach(b=>{
     if (mode==='crossmodal') runCrossModal();
     if (mode==='nback') runNBack();
     if (mode==='dualNback') runDualNBack();
+    if (mode==='corsi') runCorsi();
     if (mode==='filterPos') runFilterPos();
     if (mode==='mult') runMult();
   };
@@ -1471,6 +1474,10 @@ function updateLaunchpadPBs() {
       if (!pb) return null;
       const avg = Math.round((pb.posAcc + pb.audioAcc) / 2);
       return `${pb.n}-back: ${avg}%`;
+    },
+    corsi: () => {
+      const pb = getPersonalBest('corsi');
+      return pb !== null ? `Span: ${pb}` : null;
     },
     filterPos: () => {
       const pb = getPersonalBest('filterPos');
@@ -1999,6 +2006,126 @@ async function dualNBackBlock(n, secs) {
   });
 }
 
+/* ---------- 3.6) Corsi Block-Tapping ---------- */
+// Irregular block positions (not a grid) per standard Corsi test
+const corsiPositions = [
+  {x: 15, y: 20}, {x: 70, y: 8}, {x: 45, y: 45}, {x: 85, y: 35},
+  {x: 25, y: 70}, {x: 55, y: 78}, {x: 10, y: 50}, {x: 75, y: 65}, {x: 40, y: 15}
+];
+
+async function runCorsi() {
+  let level = 2, cleared = 0;
+  const maxLevel = 7;
+
+  while (level <= maxLevel) {
+    const ok = await corsiLevel(level);
+    if (ok) { cleared++; level++; }
+    else break;
+  }
+
+  const span = level - 1;
+  const pb = isPersonalBest('corsi', span);
+  const isGood = span >= 5;
+  const encourage = getEncouragement(isGood, pb);
+  const scoreStr = 'Span ' + span;
+
+  store.push('corsi', { scoreStr, span, trialsCorrect: cleared, trialsTotal: level - 2, personalBest: pb });
+  toast('Corsi Blocks · ' + scoreStr + (pb ? ' 🏆 ' : ' · ') + encourage, pb ? 'ok' : isGood ? 'info' : 'info');
+  drawLaunchpad();
+}
+
+async function corsiLevel(seqLen) {
+  // Generate random sequence of block indices
+  const seq = [];
+  for (let i = 0; i < seqLen; i++) {
+    let idx;
+    do { idx = Math.floor(Math.random() * 9); } while (seq.length > 0 && seq[seq.length - 1] === idx);
+    seq.push(idx);
+  }
+
+  return new Promise(async resolve => {
+    // Build UI using DOM methods
+    const container = document.createElement('div');
+    container.className = 'stack';
+    const h2 = document.createElement('h2');
+    h2.textContent = 'Corsi Block-Tapping – Sequence of ' + seqLen;
+    container.appendChild(h2);
+    const instDiv = document.createElement('div');
+    instDiv.className = 'muted';
+    instDiv.id = 'corsi-inst';
+    instDiv.textContent = 'Watch the sequence...';
+    container.appendChild(instDiv);
+
+    const field = document.createElement('div');
+    field.className = 'corsi-field';
+    field.style.cssText = 'position:relative;width:280px;height:280px;margin:20px auto;background:#0f1720;border-radius:12px';
+
+    const blocks = [];
+    for (let i = 0; i < 9; i++) {
+      const block = document.createElement('div');
+      block.className = 'corsi-block';
+      block.dataset.idx = i;
+      block.style.cssText = 'position:absolute;width:40px;height:40px;background:#1a2430;border-radius:8px;cursor:pointer;transition:background 0.15s,transform 0.15s;left:' + (corsiPositions[i].x * 2.4) + 'px;top:' + (corsiPositions[i].y * 2.4) + 'px';
+      field.appendChild(block);
+      blocks.push(block);
+    }
+    container.appendChild(field);
+
+    const feedback = document.createElement('div');
+    feedback.className = 'muted center';
+    feedback.id = 'corsi-feedback';
+    feedback.style.marginTop = '12px';
+    container.appendChild(feedback);
+
+    screen.textContent = '';
+    screen.appendChild(container);
+
+    // Show sequence
+    await wait(500);
+    for (let i = 0; i < seq.length; i++) {
+      blocks[seq[i]].style.background = 'var(--brand)';
+      blocks[seq[i]].style.transform = 'scale(1.1)';
+      await wait(800);
+      blocks[seq[i]].style.background = '#1a2430';
+      blocks[seq[i]].style.transform = '';
+      await wait(300);
+    }
+
+    // Recall phase
+    instDiv.textContent = 'Tap the blocks in the same order';
+    let recallIdx = 0;
+
+    const handleClick = (e) => {
+      const block = e.target;
+      if (!block.classList.contains('corsi-block')) return;
+      const idx = parseInt(block.dataset.idx, 10);
+
+      if (idx === seq[recallIdx]) {
+        block.style.background = 'var(--ok)';
+        recallIdx++;
+        if (recallIdx === seq.length) {
+          cleanup();
+          feedback.textContent = 'Correct!';
+          feedback.style.color = 'var(--ok)';
+          setTimeout(() => resolve(true), 800);
+        }
+      } else {
+        block.style.background = 'var(--err)';
+        cleanup();
+        feedback.textContent = 'Wrong order';
+        feedback.style.color = 'var(--err)';
+        setTimeout(() => resolve(false), 800);
+      }
+    };
+
+    field.addEventListener('click', handleClick);
+
+    function cleanup() {
+      field.removeEventListener('click', handleClick);
+    }
+  });
+}
+
 /* ---------- 4) Filter Positive ---------- */
 async function runFilterPos(){
   const pool=[...sample(wordBank.positive,6), ...sample(wordBank.negative,5), ...sample(wordBank.neutral,5)]; shuffle(pool);
@@ -2143,7 +2270,7 @@ function calculateDomainScores(storeData, profile) {
   const domainMap = {
     attention: ['nback', 'dualNback', 'filterPos'],
     verbal: ['span', 'mult'],
-    spatial: ['spatial', 'crossmodal']
+    spatial: ['spatial', 'crossmodal', 'corsi']
   };
 
   const baseline = profile?.cognitiveBaseline || { attention: 50, verbal: 50, spatial: 50 };
@@ -2167,6 +2294,7 @@ function calculateDomainScores(storeData, profile) {
         if (r.type === 'mult') return r.acc ?? parseMultAcc(r.scoreStr) ?? 50;
         if (r.type === 'spatial') return (r.cleared / 4) * 100; // Max 4 levels
         if (r.type === 'crossmodal') return (r.cleared / 3) * 100;
+        if (r.type === 'corsi') return (r.span / 7) * 100; // Max span 7
         return 50;
       }).filter(s => Number.isFinite(s));
       
@@ -2277,12 +2405,12 @@ function drawDomainChart(domain) {
   const domainMap = {
     attention: ['nback', 'dualNback', 'filterPos'],
     verbal: ['span', 'mult'],
-    spatial: ['spatial', 'crossmodal']
+    spatial: ['spatial', 'crossmodal', 'corsi']
   };
 
   const tasks = domainMap[domain] || [];
   const data = tasks.flatMap(taskKey => (s[taskKey] || []).slice(-30));
-  
+
   // Sort by timestamp
   data.sort((a, b) => new Date(a.ts) - new Date(b.ts));
 
@@ -2294,6 +2422,7 @@ function drawDomainChart(domain) {
       const level = r.bestLevel ?? r.level ?? parseSpanFromScore(r.scoreStr);
       return Math.min(100, (level / 5) * 100);
     }
+    if (r.type === 'corsi') return (r.span / 7) * 100;
     if (r.type === 'mult') return r.acc ?? parseMultAcc(r.scoreStr) ?? 50;
     if (r.type === 'spatial') return (r.cleared / 4) * 100; // Max 4 levels
     if (r.type === 'crossmodal') return (r.cleared / 3) * 100;
