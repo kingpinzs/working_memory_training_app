@@ -7,32 +7,32 @@
 
 ## 1. Missing Features (Would Add Real Value)
 
-### HIGH IMPACT
+### HIGH IMPACT - ALL COMPLETE ✅
 
-| Feature | Description | Value | Effort |
-|---------|-------------|-------|--------|
-| Dual N-Back | Audio+visual simultaneous N-back task | High - most researched WM exercise | 4-6h |
-| Personal best tracking | Show best scores, celebrate new records | Medium - motivation boost | 1-2h |
-| Rolling window adaptation | Use last 3 sessions for difficulty decisions | Medium - reduces volatility | 1h |
-| Week-over-week analytics | Compare this week to last week | Medium - progress visibility | 2-3h |
+| Feature | Description | Value | Effort | Status |
+|---------|-------------|-------|--------|--------|
+| Dual N-Back | Audio+visual simultaneous N-back task | High - most researched WM exercise | 4-6h | ✅ Phase 3 |
+| Personal best tracking | Show best scores, celebrate new records | Medium - motivation boost | 1-2h | ✅ Phase 1 |
+| Rolling window adaptation | Use last 3 sessions for difficulty decisions | Medium - reduces volatility | 1h | ✅ Phase 1 |
+| Week-over-week analytics | Compare this week to last week | Medium - progress visibility | 2-3h | ✅ Phase 4 |
 
-### MEDIUM IMPACT
+### MEDIUM IMPACT - ALL COMPLETE ✅
 
-| Feature | Description | Value | Effort |
-|---------|-------------|-------|--------|
-| Corsi Block-Tapping | Visuospatial sequence recall task | Medium - complements spatial | 3-4h |
-| BrainTok micro-tasks | Quick 30-second swipeable exercises | Medium - engagement | 6-10h |
-| Operation Span | Complex span with processing component | Medium - verbal challenge | 4-5h |
-| 3-back N-Back level | Advanced level for mastered users | Low - small user segment | 2-3h |
+| Feature | Description | Value | Effort | Status |
+|---------|-------------|-------|--------|--------|
+| Corsi Block-Tapping | Visuospatial sequence recall task | Medium - complements spatial | 3-4h | ✅ Phase 3 |
+| BrainTok micro-tasks | Quick 30-second swipeable exercises | Medium - engagement | 6-10h | ✅ Phase 5 |
+| Operation Span | Complex span with processing component | Medium - verbal challenge | 4-5h | ✅ Phase 6 |
+| 3-back N-Back level | Advanced level for mastered users | Low - small user segment | 2-3h | ✅ Phase 6 |
 
-### LOW IMPACT (Nice to Have)
+### LOW IMPACT - MOSTLY COMPLETE ✅
 
-| Feature | Description | Value | Effort |
-|---------|-------------|-------|--------|
-| Dark/light theme toggle | Alternative color scheme | Low - dark theme works well | 3-4h |
-| Export profile to JSON | Backup/restore functionality | Low - edge case | 1-2h |
-| Audio mode for N-Back | Spoken letters instead of text | Low - accessibility | 3-4h |
-| Reminders/notifications | Push notifications for training | Low - requires backend | High |
+| Feature | Description | Value | Effort | Status |
+|---------|-------------|-------|--------|--------|
+| High contrast mode | Alternative color scheme | Low - accessibility | 3-4h | ✅ Phase 7 |
+| Export profile to JSON | Backup/restore functionality | Low - edge case | 1-2h | ✅ Phase 6 |
+| Audio mode for N-Back | Spoken letters instead of text | Low - accessibility | 3-4h | ✅ Phase 7 |
+| Reminders/notifications | Push notifications for training | Low - requires backend | High | ❌ Future |
 
 ---
 
@@ -58,28 +58,22 @@
 
 ## 3. Incomplete Features
 
-### BrainTok (Per PRD)
+### BrainTok (Per PRD) ✅ COMPLETE
 
-**Current State:** Placeholder with single "Did you know?" card.
+**Current State:** Fully implemented with swipeable card interface.
 
-**Missing:**
-- Swipeable card interface
-- 6 micro-tasks (Math Flash, Word Match, Memory Flash, Speed Sort, Pattern Complete, Odd One Out)
-- 30-second completion time target
-- Engagement tracking
-
-**Priority:** P2 (after core improvements)
+**Implemented (Phase 5):**
+- ✅ Swipeable card interface with touch/mouse gestures
+- ✅ Math Flash micro-task (verify equations)
+- ✅ Memory Flash micro-task (sequence matching)
+- ✅ Word Match micro-task (category matching)
+- ✅ Progress dots, feedback animations, scoring
 
 ### MemoryCoin Economy (Per PRD)
 
 **Current State:** Not implemented.
 
-**Missing:**
-- Coin earning mechanism
-- Coin display in header
-- Spendable rewards/unlocks
-
-**Priority:** P3 (optional, lower value)
+**Status:** Deferred - low priority gamification feature.
 
 ### Focus Timer
 
@@ -87,15 +81,13 @@
 
 **Status:** Complete - no gaps.
 
-### Lifestyle Logging
+### Lifestyle Logging ✅ COMPLETE
 
 **Current State:** Sleep and exercise tracking implemented.
 
-**Missing:**
-- Correlation with cognitive scores
-- Visual graph showing lifestyle vs performance
-
-**Priority:** P3 (enhancement, not critical)
+**Implemented (Phase 6):**
+- ✅ Correlation with cognitive scores
+- ✅ Visual bar chart showing lifestyle vs performance
 
 ---
 
@@ -184,31 +176,31 @@
 
 ## 8. Priority Ranking (Overall)
 
-### P1: Must Do (High Impact, Reasonable Effort) - COMPLETE
-1. ✅ Personal best tracking - COMPLETE
-2. ✅ Rolling window for N-Back adaptation - COMPLETE
-3. ✅ Larger touch targets (44px minimum) - COMPLETE
-4. ✅ Fix retakeQuiz confirm() usage - COMPLETE
+### P1: Must Do (High Impact, Reasonable Effort) - ✅ COMPLETE
+1. ✅ Personal best tracking - Phase 1
+2. ✅ Rolling window for N-Back adaptation - Phase 1
+3. ✅ Larger touch targets (44px minimum) - Phase 1
+4. ✅ Fix retakeQuiz confirm() usage - Phase 1
 
-### P2: Should Do (Medium Impact)
-1. Dual N-Back task
-2. Week-over-week analytics
-3. Task completion feedback improvements
-4. Trend arrows on dashboard
-5. Discovery Quiz E2E tests
+### P2: Should Do (Medium Impact) - ✅ COMPLETE
+1. ✅ Dual N-Back task - Phase 3
+2. ✅ Week-over-week analytics - Phase 4
+3. ✅ Task completion feedback improvements - Phase 4
+4. ✅ Trend arrows on dashboard - Phase 2
+5. Discovery Quiz E2E tests - Pending (low priority)
 
-### P3: Nice to Have (Lower Priority)
-1. Corsi Block-Tapping
-2. BrainTok micro-tasks (3 initial)
-3. Operation Span
-4. High contrast mode
-5. Lifestyle correlation graphs
+### P3: Nice to Have (Lower Priority) - ✅ COMPLETE
+1. ✅ Corsi Block-Tapping - Phase 3
+2. ✅ BrainTok micro-tasks (3 initial) - Phase 5
+3. ✅ Operation Span - Phase 6
+4. ✅ High contrast mode - Phase 7
+5. ✅ Lifestyle correlation graphs - Phase 6
 
-### P4: Future Consideration
-1. 3-back N-Back
-2. MemoryCoin economy
-3. Push notifications
-4. Audio N-Back mode
+### P4: Future Consideration - MOSTLY COMPLETE
+1. ✅ 3-back N-Back - Phase 6
+2. ❌ MemoryCoin economy - Deferred (low value)
+3. ❌ Push notifications - Requires backend
+4. ✅ Audio N-Back mode - Phase 7
 
 ---
 
