@@ -1731,9 +1731,11 @@ function renderScores(){
   const keyMeta = { span:'WM Span', spatial:'Spatial+Verbal', crossmodal:'Cross-modal', nback:'N-Back', dualNback:'Dual N-Back', corsi:'Corsi Blocks', filterPos:'Filter Positive', mult:'Mental Mult' };
   const fmt = new Intl.DateTimeFormat([], {month:'short', day:'2-digit', hour:'2-digit', minute:'2-digit'});
   box.innerHTML = '';
+  let hasScores = false;
   Object.keys(keyMeta).forEach(k=>{
     const rows = (s[k]||[]).slice(-5).reverse();
     if (!rows.length) return;
+    hasScores = true;
     const wrap = document.createElement('div');
     wrap.className = 'stack';
     wrap.innerHTML = `<div class="caps">${keyMeta[k]}</div>`;
@@ -1747,6 +1749,9 @@ function renderScores(){
     });
     box.appendChild(wrap);
   });
+  if (!hasScores) {
+    box.innerHTML = '<div class="muted" style="text-align:center;padding:20px 0">Complete a task to see your scores here</div>';
+  }
 }
 renderScores();
 

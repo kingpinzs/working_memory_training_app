@@ -166,11 +166,11 @@
 
 **Improvements:**
 
-| Screen | Current | Improved |
-|--------|---------|----------|
-| Scores sidebar (empty) | Nothing | "Complete a task to see scores" |
-| Dashboard (no data) | Shows 0% | "Start training to see progress" |
-| Real-world wins (empty) | Placeholder text | Better illustration + CTA |
+| Screen | Current | Improved | Status |
+|--------|---------|----------|--------|
+| Scores sidebar (empty) | Nothing | "Complete a task to see scores" | ✅ Session 9 |
+| Dashboard (no data) | Shows 0% | "Start training to see progress" | ✅ Exists |
+| Real-world wins (empty) | Placeholder text | Better illustration + CTA | ❌ Deferred |
 
 ### 4.3 Error States
 
