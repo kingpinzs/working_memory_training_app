@@ -214,6 +214,16 @@ Store.prototype.handleCorruptedData = function() {
   localStorage.removeItem(this.key);
   toast('⚠️ Data corruption detected. Reset to defaults.', 'warn');
 };
+// Generic push method for array-based stores
+Store.prototype.push = function(entry) {
+  if (!this.isArray) {
+    console.warn(`[Store] Push called on non-array store ${this.key}`);
+    return;
+  }
+  const data = this.get();
+  data.push(entry);
+  this.set(data);
+};
 
 const store = new Store('wmLab');
 const profileStore = new Store('wmLabProfile');
@@ -230,13 +240,49 @@ store.push = function(key, entry) {
   if (document.querySelector('#scores')) renderScores();
 };
 store.reset = function() {
-  if (confirm('Are you sure you want to reset all scores? This cannot be undone.')) {
-    localStorage.removeItem(this.key);
-    if (document.querySelector('#scores')) renderScores();
-    drawLaunchpad();
-    toast('Scores have been reset.');
-  }
+  localStorage.removeItem(this.key);
+  if (document.querySelector('#scores')) renderScores();
+  drawLaunchpad();
+  toast('Scores have been reset.');
 };
+
+// Show inline reset confirmation instead of browser confirm()
+function showResetConfirm() {
+  const btn = document.getElementById('resetScores');
+  if (!btn) return;
+
+  // Create confirm/cancel container
+  const parent = btn.parentElement;
+  const confirmContainer = document.createElement('div');
+  confirmContainer.id = 'resetConfirm';
+  confirmContainer.className = 'row';
+  confirmContainer.style.gap = '8px';
+
+  const confirmBtn = document.createElement('button');
+  confirmBtn.className = 'warn';
+  confirmBtn.textContent = 'Confirm Reset';
+  confirmBtn.onclick = () => {
+    store.reset();
+    cancelResetConfirm();
+  };
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.textContent = 'Cancel';
+  cancelBtn.onclick = cancelResetConfirm;
+
+  confirmContainer.appendChild(confirmBtn);
+  confirmContainer.appendChild(cancelBtn);
+
+  btn.style.display = 'none';
+  parent.appendChild(confirmContainer);
+}
+
+function cancelResetConfirm() {
+  const container = document.getElementById('resetConfirm');
+  const btn = document.getElementById('resetScores');
+  if (container) container.remove();
+  if (btn) btn.style.display = '';
+}
 
 // Expose key objects/functions for testing
 window.store = store;
@@ -260,7 +306,7 @@ const prefs = {
   set(p){ localStorage.setItem('wmLabPrefs', JSON.stringify(p)); }
 };
 
-$('#resetScores').onclick = () => store.reset();
+$('#resetScores').onclick = showResetConfirm;
 $('#exportCsv').onclick = exportCsv;
 
 /* ---------- Tabs ---------- */
@@ -377,6 +423,15 @@ function drawDashboard() {
       <!-- Lifestyle-Performance Correlation -->
       <div id="lifestyle-correlation"></div>
 
+      <!-- PWA Analytics Section -->
+      <div class="card stack pwa-analytics">
+        <h3 class="caps tight">PWA Analytics</h3>
+        <div id="pwa-metrics" class="row" style="flex-wrap:wrap; gap:12px"></div>
+        <div class="sep"></div>
+        <div class="caps tight">Recent Activity</div>
+        <div id="pwa-activity"></div>
+      </div>
+
       <!-- Performance Trends -->
       <div class="card stack">
         <div class="caps">Performance Trends (last 10 sessions)</div>
@@ -407,6 +462,9 @@ function drawDashboard() {
 
   // Render lifestyle correlation insights
   renderLifestyleCorrelation();
+
+  // Render PWA analytics
+  renderPWAAnalytics();
 
   // Add click handlers for domain cards
   document.querySelectorAll('.domain-card').forEach(card => {
@@ -896,6 +954,43 @@ function generateUserProfile(baseline, preferences) {
   };
 }
 
+// Helper function for testing: determine persona from preferences
+function determinePersona(preferences) {
+  const goalMap = {
+    'improve': 'struggler',
+    'compete': 'competitor',
+    'perform': 'competitor',
+    'understand': 'scientist'
+  };
+  return goalMap[preferences.goal] || goalMap[preferences.primaryGoal] || 'struggler';
+}
+
+// Helper function for testing: get recommendations based on baseline
+function getRecommendations(baseline) {
+  const recommendations = [];
+  
+  // Find weakest domain(s)
+  const domains = [
+    { tasks: ['nback', 'filterPos'], score: baseline.attention, name: 'attention' },
+    { tasks: ['span', 'mult'], score: baseline.verbal, name: 'verbal' },
+    { tasks: ['spatial', 'crossmodal'], score: baseline.spatial, name: 'spatial' }
+  ];
+  
+  // Sort by score ascending (weakest first)
+  domains.sort((a, b) => a.score - b.score);
+  
+  // Recommend tasks for the weakest domain first
+  domains.forEach(domain => {
+    domain.tasks.forEach(task => {
+      if (!recommendations.includes(task)) {
+        recommendations.push(task);
+      }
+    });
+  });
+  
+  return recommendations;
+}
+
 async function showProfileSummary(profile) {
   const personaTitles = {
     struggler: 'The Improver',
@@ -1064,24 +1159,58 @@ function viewProfile() {
         </div>
       </div>
 
-      <div class="card" style="border-color:#3a4a66">
+      <div class="card" style="border-color:#3a4a66" id="retakeCard">
         <div class="caps tight" style="margin-bottom:8px">⚠️ Reset Profile</div>
         <p class="muted" style="margin-bottom:12px">Retake the Discovery Quiz to update your profile and baseline scores. <b>This will not delete your training history.</b></p>
-        <button class="warn" onclick="retakeQuiz()">Retake Discovery Quiz</button>
+        <button class="warn" onclick="showRetakeConfirm()">Retake Discovery Quiz</button>
       </div>
     </div>
   `;
 }
 
+function showRetakeConfirm() {
+  const card = document.getElementById('retakeCard');
+  if (!card) return;
+
+  // Clear existing content safely
+  while (card.firstChild) card.removeChild(card.firstChild);
+
+  // Build confirmation UI with safe DOM methods
+  const title = document.createElement('div');
+  title.className = 'caps tight';
+  title.style.marginBottom = '8px';
+  title.textContent = '⚠️ Confirm Reset';
+
+  const msg = document.createElement('p');
+  msg.className = 'muted';
+  msg.style.marginBottom = '12px';
+  msg.textContent = 'Are you sure? This will reset your profile and baseline scores, but your training history will be preserved.';
+
+  const btnContainer = document.createElement('div');
+  btnContainer.style.display = 'flex';
+  btnContainer.style.gap = '10px';
+
+  const confirmBtn = document.createElement('button');
+  confirmBtn.className = 'warn';
+  confirmBtn.textContent = 'Yes, Reset Profile';
+  confirmBtn.onclick = retakeQuiz;
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.textContent = 'Cancel';
+  cancelBtn.onclick = drawProfile;
+
+  btnContainer.appendChild(confirmBtn);
+  btnContainer.appendChild(cancelBtn);
+  card.appendChild(title);
+  card.appendChild(msg);
+  card.appendChild(btnContainer);
+}
+
 function retakeQuiz() {
-  if (!confirm('Are you sure you want to retake the Discovery Quiz? This will reset your profile and baseline scores, but your training history will be preserved.')) {
-    return;
-  }
-  
   // Clear profile to trigger quiz
   profileStore.set(null);
   localStorage.removeItem('wmLabProfile');
-  
+
   // Reload app to restart quiz
   location.reload();
 }
@@ -1813,6 +1942,145 @@ function openRealWorldModal() {
   };
 }
 
+function openPersonaValidationSurvey() {
+  const profile = profileStore.get();
+  if (!profile || !profile.persona) return;
+  
+  const personaTitles = {
+    struggler: 'The Improver',
+    competitor: 'The Competitor', 
+    scientist: 'The Scientist'
+  };
+  const personaDescs = {
+    struggler: 'Focused on progress and real-world improvement',
+    competitor: 'Loves challenges and pushing limits',
+    scientist: 'Analytical and data-driven'
+  };
+  
+  const modal = document.createElement('div');
+  modal.id = 'personaSurveyModal';
+  modal.style.cssText = 'position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,.75); z-index:999; display:flex; align-items:center; justify-content:center';
+  
+  modal.innerHTML = `
+    <div class="card" style="max-width:500px; width:90%; margin:20px">
+      <h2 class="caps">How Accurate is Your Profile?</h2>
+      <p class="muted">Help us improve by rating how well your persona matches you.</p>
+      
+      <div class="card" style="background:#0f1725; border-color:#2a3b5e; padding:16px; margin:16px 0; text-align:center">
+        <div style="font-size:32px; margin-bottom:8px">${profile.persona === 'struggler' ? '📈' : profile.persona === 'competitor' ? '🏆' : '🧠'}</div>
+        <div style="font-size:18px; margin-bottom:4px"><b>${personaTitles[profile.persona]}</b></div>
+        <p class="muted" style="font-size:14px">${personaDescs[profile.persona]}</p>
+      </div>
+      
+      <div style="margin:20px 0">
+        <div class="caps tight" style="margin-bottom:12px">Rate Accuracy</div>
+        <div class="row" style="justify-content:center; gap:8px; flex-wrap:wrap">
+          <button class="rating-btn" data-rating="1">⭐<br><small>Poor</small></button>
+          <button class="rating-btn" data-rating="2">⭐⭐<br><small>Fair</small></button>
+          <button class="rating-btn" data-rating="3">⭐⭐⭐<br><small>Good</small></button>
+          <button class="rating-btn" data-rating="4">⭐⭐⭐⭐<br><small>Great</small></button>
+          <button class="rating-btn" data-rating="5">⭐⭐⭐⭐⭐<br><small>Perfect</small></button>
+        </div>
+      </div>
+      
+      <div style="margin:20px 0">
+        <label class="caps tight" style="display:block; margin-bottom:8px">Comments (optional)</label>
+        <textarea id="personaComment" placeholder="What would you change about this profile?" 
+                  maxlength="200" rows="3" 
+                  style="width:100%; padding:12px; border-radius:8px; border:1px solid var(--line); background:var(--bg); color:var(--ink); font-family:inherit; resize:vertical"></textarea>
+        <div class="muted" style="font-size:12px; margin-top:4px"><span id="commentCount">0/200</span> characters</div>
+      </div>
+      
+      <div class="row" style="margin-top:20px; gap:8px">
+        <button class="primary" id="submitPersonaSurvey" disabled>Submit Feedback</button>
+        <button id="remindPersonaLater">Remind Me Later</button>
+        <button id="dismissPersonaSurvey">Don't Ask Again</button>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  
+  const textarea = $('#personaComment');
+  const charCount = $('#commentCount');
+  const submitBtn = $('#submitPersonaSurvey');
+  let selectedRating = null;
+  
+  // Rating button styling
+  const ratingButtons = modal.querySelectorAll('.rating-btn');
+  ratingButtons.forEach(btn => {
+    btn.style.cssText = `
+      padding: 12px 8px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--bg);
+      color: var(--ink);
+      cursor: pointer;
+      text-align: center;
+      min-width: 60px;
+      transition: all 0.2s;
+    `;
+    btn.onclick = () => {
+      ratingButtons.forEach(b => b.style.background = 'var(--bg)');
+      btn.style.background = 'var(--accent)';
+      selectedRating = parseInt(btn.dataset.rating);
+      submitBtn.disabled = false;
+      submitBtn.style.opacity = '1';
+    };
+  });
+  
+  textarea.oninput = () => {
+    charCount.textContent = textarea.value.length + '/200';
+  };
+  
+  function submitSurvey(response) {
+    const surveyData = {
+      rating: selectedRating,
+      comment: textarea.value.trim(),
+      timestamp: new Date().toISOString(),
+      ...response
+    };
+    
+    profile.personaValidation = surveyData;
+    profileStore.set(profile);
+    
+    modal.remove();
+    toast('Thanks for your feedback! 🎉');
+  }
+  
+  $('#submitPersonaSurvey').onclick = () => {
+    if (!selectedRating) return;
+    submitSurvey({ action: 'submitted' });
+  };
+  
+  $('#remindPersonaLater').onclick = () => {
+    profile.personaValidation = { action: 'remind_later', timestamp: new Date().toISOString() };
+    profileStore.set(profile);
+    modal.remove();
+    toast('Will remind you later');
+  };
+  
+  $('#dismissPersonaSurvey').onclick = () => {
+    profile.personaValidation = { action: 'dismissed', timestamp: new Date().toISOString() };
+    profileStore.set(profile);
+    modal.remove();
+    toast('Got it, won\'t ask again');
+  };
+  
+  // Close on Escape
+  modal.onkeydown = (e) => {
+    if (e.key === 'Escape') modal.remove();
+  };
+  
+  // Close on backdrop click
+  modal.onclick = (e) => {
+    if (e.target === modal) modal.remove();
+  };
+  
+  // Focus first rating button
+  ratingButtons[0].focus();
+}
+
 function formatRelativeTime(timestamp) {
   const now = new Date();
   const then = new Date(timestamp);
@@ -1906,6 +2174,92 @@ function renderLifestyleCorrelation() {
       </div>
     </div>
   `;
+}
+
+function renderPWAAnalytics() {
+  const metricsContainer = $('#pwa-metrics');
+  const activityContainer = $('#pwa-activity');
+  if (!metricsContainer || !activityContainer) return;
+
+  // Get PWA analytics data
+  const analyticsRaw = localStorage.getItem('wmLabPWAAnalytics');
+  const analytics = analyticsRaw ? JSON.parse(analyticsRaw) : [];
+
+  // Calculate metrics
+  const sessionStarts = analytics.filter(e => e.event === 'session_start');
+  const pwaSessionStarts = sessionStarts.filter(e => e.isPWA === true);
+  const promptsShown = analytics.filter(e => e.event === 'install_prompt_shown').length;
+  const promptsAccepted = analytics.filter(e => e.event === 'install_accepted').length;
+  const promptsDismissed = analytics.filter(e => e.event === 'install_dismissed').length;
+  const installations = analytics.filter(e => e.event === 'app_installed').length;
+  
+  const totalSessions = sessionStarts.length;
+  const pwaSessions = pwaSessionStarts.length;
+  const browserSessions = totalSessions - pwaSessions;
+  const pwaRate = totalSessions > 0 ? ((pwaSessions / totalSessions) * 100).toFixed(1) : '0.0';
+  const installRate = promptsShown > 0 ? ((promptsAccepted / promptsShown) * 100).toFixed(1) : '0.0';
+  const promptRate = promptsShown > 0 ? ((promptsAccepted / promptsShown) * 100).toFixed(1) : '0.0';
+
+  // Render metric cards
+  metricsContainer.innerHTML = `
+    <div class="metric-card card" style="min-width:100px; text-align:center; padding:12px">
+      <div class="metric-value big">${totalSessions}</div>
+      <div class="metric-label muted">Total Sessions</div>
+    </div>
+    <div class="metric-card card" style="min-width:100px; text-align:center; padding:12px">
+      <div class="metric-value big">${pwaSessions}</div>
+      <div class="metric-label muted">PWA Sessions</div>
+    </div>
+    <div class="metric-card card" style="min-width:100px; text-align:center; padding:12px">
+      <div class="metric-value big">${browserSessions}</div>
+      <div class="metric-label muted">Browser Sessions</div>
+    </div>
+    <div class="metric-card card" style="min-width:100px; text-align:center; padding:12px">
+      <div class="metric-value big">${pwaRate}%</div>
+      <div class="metric-label muted">PWA Rate</div>
+    </div>
+    <div class="metric-card card" style="min-width:100px; text-align:center; padding:12px">
+      <div class="metric-value big">${promptsShown}</div>
+      <div class="metric-label muted">Prompts Shown</div>
+    </div>
+    <div class="metric-card card" style="min-width:100px; text-align:center; padding:12px">
+      <div class="metric-value big">${installRate}%</div>
+      <div class="metric-label muted">Install Rate</div>
+    </div>
+    <div class="metric-card card" style="min-width:100px; text-align:center; padding:12px">
+      <div class="metric-value big">${installations}</div>
+      <div class="metric-label muted">Installations</div>
+    </div>
+    <div class="metric-card card" style="min-width:100px; text-align:center; padding:12px">
+      <div class="metric-value big">${promptsDismissed}</div>
+      <div class="metric-label muted">Prompts Dismissed</div>
+    </div>
+  `;
+
+  // Render recent activity (last 4 events, sorted by timestamp descending)
+  const sortedEvents = [...analytics].sort((a, b) => 
+    new Date(b.timestamp) - new Date(a.timestamp)
+  );
+  const recentEvents = sortedEvents.slice(0, 4);
+  if (recentEvents.length === 0) {
+    activityContainer.innerHTML = '<div class="muted">No activity recorded yet</div>';
+  } else {
+    activityContainer.innerHTML = recentEvents.map(event => {
+      const eventName = event.event.replace(/_/g, ' ');
+      const time = formatRelativeTime(event.timestamp);
+      const icon = event.event.includes('install') ? '📱' : 
+                   event.event === 'session_start' ? (event.isPWA ? '🚀' : '🌐') : '📊';
+      return `
+        <div class="activity-item row" style="padding:8px 0; border-bottom:1px solid var(--line)">
+          <span style="font-size:18px">${icon}</span>
+          <div style="flex:1">
+            <div class="activity-event">${eventName}</div>
+            <div class="muted" style="font-size:12px">${time}</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
 }
 
 function calculateLifestyleCorrelations(taskData, lifestyleData) {
@@ -2154,10 +2508,14 @@ function showInstallButton() {
       installBtn.onclick = triggerInstall;
       installBtn.setAttribute('aria-label', 'Install Progressive Web App');
       
-      // Add to launchpad
-      const buttonContainer = launchpad.querySelector('.button-grid') || launchpad.querySelector('div');
-      if (buttonContainer) {
-        buttonContainer.appendChild(installBtn);
+      // Find the button container - look for existing buttons
+      const existingButtons = launchpad.querySelectorAll('button');
+      if (existingButtons.length > 0) {
+        // Insert after the last button
+        existingButtons[existingButtons.length - 1].after(installBtn);
+      } else {
+        // Fallback: add to screen
+        launchpad.appendChild(installBtn);
       }
     }
   }
@@ -2596,8 +2954,42 @@ function setCachedDashboardData(data) {
 const originalPush = store.push;
 store.push = function(...args) {
   dashboardDataCache = null;
-  return originalPush.apply(this, args);
+  
+  // Check for persona validation survey trigger
+  const result = originalPush.apply(this, args);
+  checkPersonaSurveyTrigger();
+  
+  return result;
 };
+
+function checkPersonaSurveyTrigger() {
+  const profile = profileStore.get();
+  if (!profile || !profile.persona) return;
+  
+  // Check if already responded
+  if (profile.personaValidation) {
+    // If dismissed, never show again
+    if (profile.personaValidation.action === 'dismissed') return;
+    
+    // If reminded later, check if enough sessions have passed
+    if (profile.personaValidation.action === 'remind_later') {
+      const sessionsSinceReminder = Object.values(store.get()).flat().filter(entry => 
+        new Date(entry.ts) > new Date(profile.personaValidation.timestamp)
+      ).length;
+      if (sessionsSinceReminder < 5) return; // Wait 5 more sessions
+    } else {
+      // Already submitted
+      return;
+    }
+  }
+  
+  // Check total sessions
+  const totalSessions = Object.values(store.get()).flat().length;
+  if (totalSessions < 3) return;
+  
+  // Show survey
+  setTimeout(() => openPersonaValidationSurvey(), 1000); // Small delay after task completion
+}
 
 // Paginate scores display
 function renderScoresPaginated(page = 1, perPage = 10) {
@@ -2657,6 +3049,13 @@ function renderScoresPaginated(page = 1, perPage = 10) {
 window.renderScores = function() {
   renderScoresPaginated(1, 10);
 };
+
+// Expose functions for testing
+window.openPersonaValidationSurvey = openPersonaValidationSurvey;
+window.checkPersonaSurveyTrigger = checkPersonaSurveyTrigger;
+window.store = store;
+window.determinePersona = determinePersona;
+window.getRecommendations = getRecommendations;
 
 console.log('[Performance] Optimizations loaded: caching, pagination, lazy loading');
 console.log('[Accessibility] Enhanced: ARIA labels, keyboard nav, screen reader support');
