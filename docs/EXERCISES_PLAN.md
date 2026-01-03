@@ -253,19 +253,19 @@ function decideNFromHistory(sessions) {
 
 The PRD specifies 6 micro-tasks for BrainTok. Here's how they map to existing exercises:
 
-| Micro-Task | Relationship to Existing | Implementation Notes |
-|------------|-------------------------|---------------------|
-| Math Flash | Variant of Mental Mult | Faster, 1 problem at a time, swipe interface |
-| Word Match | New | Match word to category (positive/negative/neutral) |
-| Memory Flash | Variant of WM Span | Show 3-4 items, quick recall |
-| Speed Sort | New | Drag items into correct categories quickly |
-| Pattern Complete | New | Visual pattern completion (next in sequence) |
-| Odd One Out | New | Find the item that doesn't belong |
+| Micro-Task | Relationship to Existing | Implementation Notes | Status |
+|------------|-------------------------|---------------------|--------|
+| Math Flash | Variant of Mental Mult | Faster, 1 problem at a time, swipe interface | ✅ Phase 5 |
+| Word Match | New | Match word to category (positive/negative/neutral) | ✅ Phase 5 |
+| Memory Flash | Variant of WM Span | Show 3-4 items, quick recall | ✅ Phase 5 |
+| Speed Sort | New | Drag items into correct categories quickly | ❌ Future |
+| Pattern Complete | New | Visual pattern completion (next in sequence) | ❌ Future |
+| Odd One Out | New | Find the item that doesn't belong | ❌ Future |
 
 **Recommended Approach:**
-1. Implement BrainTok container with swipe navigation
-2. Start with 2-3 micro-tasks (Math Flash, Memory Flash, Word Match)
-3. Add remaining tasks incrementally
+1. ✅ Implement BrainTok container with swipe navigation
+2. ✅ Start with 2-3 micro-tasks (Math Flash, Memory Flash, Word Match)
+3. Add remaining tasks incrementally (Future)
 
 **Estimated Effort:** 6-10 hours for initial 3 micro-tasks
 
