@@ -1,7 +1,7 @@
 // Working Memory Lab - Service Worker
 // Provides offline functionality and caching
 
-const CACHE_NAME = 'wm-lab-v1';
+const CACHE_NAME = 'wm-lab-v2';
 const urlsToCache = [
   '/',
   '/index.html',

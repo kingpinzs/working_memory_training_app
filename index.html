@@ -3146,7 +3146,7 @@ function calculateDomainScores(storeData, profile) {
     spatial: ['spatial', 'crossmodal', 'corsi']
   };
 
-  const baseline = profile?.cognitiveBaseline || { attention: 50, verbal: 50, spatial: 50 };
+  const baseline = profile?.baseline || { attention: 50, verbal: 50, spatial: 50 };
   const domains = {};
 
   Object.keys(domainMap).forEach(domain => {
