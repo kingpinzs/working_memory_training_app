@@ -120,7 +120,7 @@ function decideNFromHistory(sessions) {
 |-------------|-------------|--------|--------|
 | Larger word pool | Expand from 16 to 24-30 words | Low | ✅ Session 8 |
 | Difficulty levels | Easy (12 words), Medium (18), Hard (24) | Medium | ❌ Deferred |
-| Category variants | Filter the Calm (relaxation words) or Filter the Strong (strength words) | Medium | ❌ Deferred |
+| Category variants | Filter the Calm (relaxation words) or Filter the Strong (strength words) | Medium | ✅ Session 9 |
 | Countdown mode | 30-second limit, score by words found | Medium | ✅ Session 9 |
 | Streak tracking | Track consecutive perfect sessions | Low | ✅ Session 8 |
 

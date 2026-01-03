@@ -1832,6 +1832,17 @@ function openSettings() {
           </label>
           <div><b>Addition Mode</b> <span class="muted">add instead of multiply</span></div>
         </div>
+
+        <div class="row" title="Choose word category for Filter task">
+          <div style="flex:1">
+            <div><b>Filter Category</b></div>
+            <div id="filterCategoryBtns" style="display:flex;gap:6px;margin-top:6px">
+              <button class="chip ${(p.filterCategory||'positive')==='positive'?'good':''}" data-cat="positive" style="padding:6px 10px;font-size:0.85rem">Positive</button>
+              <button class="chip ${p.filterCategory==='calm'?'good':''}" data-cat="calm" style="padding:6px 10px;font-size:0.85rem">Calm</button>
+              <button class="chip ${p.filterCategory==='strong'?'good':''}" data-cat="strong" style="padding:6px 10px;font-size:0.85rem">Strong</button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="card stack">
@@ -1902,6 +1913,22 @@ function openSettings() {
     prefs.set(p);
     toast(`Addition Mode ${p.additionMode ? 'ON' : 'OFF'}`);
   };
+
+  // Filter category button handlers
+  document.querySelectorAll('#filterCategoryBtns button').forEach(btn => {
+    btn.onclick = () => {
+      const cat = btn.dataset.cat;
+      const p = prefs.get();
+      p.filterCategory = cat;
+      prefs.set(p);
+      // Update button states
+      document.querySelectorAll('#filterCategoryBtns button').forEach(b => {
+        b.classList.toggle('good', b.dataset.cat === cat);
+      });
+      const catNames = { positive: 'Positive', calm: 'Calm', strong: 'Strong' };
+      toast(`Filter: ${catNames[cat]}`);
+    };
+  });
 
   $('#settingsCoachToggle').onchange = (e) => {
     const p = prefs.get();
@@ -1976,6 +2003,15 @@ const wordBank = {
   positive:["ecstatic","thankful","friendly","sunny","bright","inspire","safe","delight","fortunate","joyful","peaceful","hopeful","cheerful","blessed","content","excited","proud","loved","caring","grateful"],
   negative:["downer","afraid","anguish","mad","guilty","coerced","dismal","anxious","bitter","gloomy","hostile","jealous","lonely","stressed","worried","upset"],
   neutral:["leaf","syrup","plank","camera","flower","tile","scissors","computer","lawnmower","pencil","window","table","carpet","basket","mirror","ladder","blanket","hammer"]
+};
+// Alternative word categories for Filter task variants
+const calmBank = {
+  target:["serene","tranquil","relaxed","soothing","mellow","quiet","gentle","restful","peaceful","calm","cozy","ease","still","soft","slow","zen"],
+  distractor:["rushed","frantic","chaotic","hectic","tense","loud","harsh","jarring","intense","urgent","wild","rapid","noisy","crazy","manic"]
+};
+const strongBank = {
+  target:["powerful","mighty","fierce","bold","brave","tough","sturdy","solid","steady","firm","robust","resilient","capable","confident","fearless","determined"],
+  distractor:["weak","fragile","timid","meek","frail","feeble","shaky","wobbly","unsure","afraid","helpless","doubtful","nervous","hesitant","uncertain"]
 };
 const pictures = ["Apple","Boat","Cat","Dog","Sun","Tree","Fish","House","Leaf"];
 const emoHappy = ["happy","joy","glad","smile","delight"];
@@ -3391,24 +3427,46 @@ async function showOpSpanRecall(letters, setSize) {
   });
 }
 
-/* ---------- 4) Filter Positive ---------- */
+/* ---------- 4) Filter Task (Positive/Calm/Strong) ---------- */
 async function runFilterPos(){
-  const pool=[...sample(wordBank.positive,6), ...sample(wordBank.negative,5), ...sample(wordBank.neutral,5)]; shuffle(pool);
-  const totalPositive = 6; // Number of positive words in pool
+  const category = prefs.get().filterCategory || 'positive';
   const useCountdown = prefs.get().countdownMode;
-  const countdownTime = 30; // 30 seconds for countdown mode
+  const countdownTime = 30;
+
+  // Select word bank based on category
+  let targetWords, distractorWords, taskTitle, targetLabel;
+  if (category === 'calm') {
+    targetWords = calmBank.target;
+    distractorWords = calmBank.distractor;
+    taskTitle = 'Filter the Calm';
+    targetLabel = 'calm';
+  } else if (category === 'strong') {
+    targetWords = strongBank.target;
+    distractorWords = strongBank.distractor;
+    taskTitle = 'Filter the Strong';
+    targetLabel = 'strong';
+  } else {
+    targetWords = wordBank.positive;
+    distractorWords = [...wordBank.negative, ...wordBank.neutral];
+    taskTitle = 'Filter the Positive';
+    targetLabel = 'positive';
+  }
+
+  const totalTarget = 6;
+  const pool = [...sample(targetWords, totalTarget), ...sample(distractorWords, 10)];
+  shuffle(pool);
 
   return new Promise(resolve=>{
     const timerLabel = useCountdown ? `⏱️ <b id="t">${countdownTime}.0</b>s` : `Time: <b id="t">0.0</b>s`;
     const subtitle = useCountdown
-      ? 'Find as many <b>positive</b> words as you can before time runs out!'
-      : 'Click only the <b>positive</b> words as fast/accurate as possible.';
+      ? `Find as many <b>${targetLabel}</b> words as you can before time runs out!`
+      : `Click only the <b>${targetLabel}</b> words as fast/accurate as possible.`;
 
     screen.innerHTML = `
       <div class="stack">
-        <h2>Filter the Positive${useCountdown ? ' ⏱️' : ''}</h2>
+        <h2>${taskTitle}${useCountdown ? ' ⏱️' : ''}</h2>
         <div class="muted">${subtitle}</div>
-        <div class="row"><span class="timer">${timerLabel}</span> <span>Found: <b id="found">0</b>/${totalPositive}</span></div>
+        <div class="row"><span class="timer">${timerLabel}</span> <span>Found: <b id="found">0</b>/${totalTarget}</span></div>
         <div id="bank" class="wordBank"></div>
         <div id="done" class="muted"></div>
       </div>`;
@@ -3427,11 +3485,11 @@ async function runFilterPos(){
         : ((performance.now()-t0)/1000).toFixed(1);
 
       const accFinal = clicks > 0 ? Math.round((correct/clicks)*100) : 0;
-      const foundRatio = Math.round((correct/totalPositive)*100);
+      const foundRatio = Math.round((correct/totalTarget)*100);
 
       // Different scoring for countdown vs normal mode
       const scoreValue = useCountdown
-        ? { found: correct, total: totalPositive }
+        ? { found: correct, total: totalTarget }
         : { acc: accFinal, time: parseFloat(secs) };
 
       const pb = isPersonalBest('filterPos', useCountdown ? scoreValue : {acc: accFinal, time: parseFloat(secs)});
@@ -3454,7 +3512,7 @@ async function runFilterPos(){
       const streakText = isPerfect && perfectStreak >= 2 ? ` 🔥 ${perfectStreak} perfect streak!` : '';
 
       const scoreStr = useCountdown
-        ? `${correct}/${totalPositive} found`
+        ? `${correct}/${totalTarget} found`
         : `${correct}/${clicks} in ${secs}s`;
 
       store.push('filterPos', {
@@ -3462,7 +3520,8 @@ async function runFilterPos(){
         acc: accFinal,
         time: useCountdown ? countdownTime : parseFloat(secs),
         found: correct,
-        totalPositive,
+        totalTarget,
+        category,
         countdownMode: useCountdown,
         personalBest: pb,
         perfectStreak: isPerfect ? perfectStreak : 0
@@ -3470,8 +3529,8 @@ async function runFilterPos(){
 
       const resultHtml = useCountdown
         ? `
-          <div class="big">${correct}/${totalPositive} found${pb ? ' 🏆' : ''}</div>
-          <div class="muted" style="margin-top:8px">${foundRatio}% of positive words${reason === 'timeout' ? ' (time up!)' : ''}</div>
+          <div class="big">${correct}/${totalTarget} found${pb ? ' 🏆' : ''}</div>
+          <div class="muted" style="margin-top:8px">${foundRatio}% of ${targetLabel} words${reason === 'timeout' ? ' (time up!)' : ''}</div>
           <div style="margin-top:8px">${encourage}</div>
         `
         : `
@@ -3479,20 +3538,20 @@ async function runFilterPos(){
           <div class="muted" style="margin-top:8px">Accuracy: ${accFinal}%${streakText}</div>
           <div style="margin-top:8px">${encourage}</div>
         `;
-      showTaskComplete('Filter Positive', resultHtml, () => runFilterPos()).then(resolve);
+      showTaskComplete(taskTitle, resultHtml, () => runFilterPos()).then(resolve);
     }
 
     pool.forEach(w=>{
       const el=document.createElement('div'); el.className='chip'; el.textContent=w;
       el.onclick=()=>{
         if (taskEnded) return;
-        clicks++; const isPos=wordBank.positive.includes(w);
-        if (isPos){ correct++; el.classList.add('good'); $('#found').textContent = correct; }
+        clicks++; const isTarget=targetWords.includes(w);
+        if (isTarget){ correct++; el.classList.add('good'); $('#found').textContent = correct; }
         else { el.classList.add('bad'); }
         el.style.pointerEvents='none';
 
-        // Check if all positive words found (ends task in both modes)
-        if (correct === totalPositive) {
+        // Check if all target words found (ends task in both modes)
+        if (correct === totalTarget) {
           endTask('complete');
         }
       };
