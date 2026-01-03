@@ -167,11 +167,11 @@
 
 ### Missing
 
-| Doc | Purpose | Priority |
-|-----|---------|----------|
-| User guide | How to use the app | P3 |
-| API/function docs | Developer reference | P3 |
-| Changelog | Version history | P3 |
+| Doc | Purpose | Priority | Status |
+|-----|---------|----------|--------|
+| User guide | How to use the app | P3 | ❌ Deferred |
+| API/function docs | Developer reference | P3 | ❌ Deferred |
+| Changelog | Version history | P3 | ❌ Deferred |
 
 ---
 
