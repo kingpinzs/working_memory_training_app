@@ -119,7 +119,7 @@ function decideNFromHistory(sessions) {
 | Improvement | Description | Effort | Status |
 |-------------|-------------|--------|--------|
 | Larger word pool | Expand from 16 to 24-30 words | Low | ✅ Session 8 |
-| Difficulty levels | Easy (12 words), Medium (18), Hard (24) | Medium | ❌ Deferred |
+| Difficulty levels | Easy (12 words), Medium (16), Hard (24) | Medium | ✅ Session 9 |
 | Category variants | Filter the Calm (relaxation words) or Filter the Strong (strength words) | Medium | ✅ Session 9 |
 | Countdown mode | 30-second limit, score by words found | Medium | ✅ Session 9 |
 | Streak tracking | Track consecutive perfect sessions | Low | ✅ Session 8 |
@@ -283,7 +283,7 @@ The PRD specifies 6 micro-tasks for BrainTok. Here's how they map to existing ex
 | Operation Span | New | Medium | Medium | P3 | ✅ Phase 6 |
 | BrainTok Math Flash | New (micro) | Low | Medium | P2 | ✅ Phase 5 |
 | BrainTok Memory Flash | New (micro) | Low | Medium | P2 | ✅ Phase 5 |
-| Filter difficulty levels | Enhancement | Medium | Low | P3 | ❌ Deferred |
+| Filter difficulty levels | Enhancement | Medium | Low | P3 | ✅ Session 9 |
 | 3-back N-back | Enhancement | Medium | Low | P3 | ✅ Phase 6 |
 
 ---
