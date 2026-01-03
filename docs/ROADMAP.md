@@ -79,14 +79,14 @@ This roadmap builds on the existing Working Memory Lab application. Each phase i
 
 ### Tasks
 
-| Task | Description | Effort | File |
-|------|-------------|--------|------|
-| 3.1 Dual N-Back design | Create UI mockup and flow | 1h | Documentation |
-| 3.2 Dual N-Back core | Implement 2-back with audio+visual | 4h | New function |
-| 3.3 Dual N-Back scoring | Track pos/audio hits separately | 1h | Store integration |
-| 3.4 Corsi Block design | Create 9-block layout | 30min | Documentation |
-| 3.5 Corsi Block core | Implement sequence display and recall | 3h | New function |
-| 3.6 Domain mapping update | Add new tasks to domain calculations | 30min | calculateDomainScores() |
+| Task | Description | Effort | File | Status |
+|------|-------------|--------|------|--------|
+| 3.1 Dual N-Back design | Create UI mockup and flow | 1h | Documentation | ✅ |
+| 3.2 Dual N-Back core | Implement 2-back with audio+visual | 4h | New function | ✅ |
+| 3.3 Dual N-Back scoring | Track pos/audio hits separately | 1h | Store integration | ✅ |
+| 3.4 Corsi Block design | Create 9-block layout | 30min | Documentation | |
+| 3.5 Corsi Block core | Implement sequence display and recall | 3h | New function | |
+| 3.6 Domain mapping update | Add new tasks to domain calculations | 30min | calculateDomainScores() | ✅ |
 
 ### Acceptance Criteria
 - Dual N-Back is playable with audio and visual stimuli

@@ -115,6 +115,7 @@
           <button class="primary" data-run="spatial" aria-label="Start Spatial and Verbal Binding task">Spatial+Verbal Bind</button>
           <button data-run="crossmodal" aria-label="Start Cross-modal Binding task">Cross-modal Binding</button>
           <button data-run="nback" aria-label="Start N-Back emotion task">1-Back / 2-Back (emotion)</button>
+          <button data-run="dualNback" aria-label="Start Dual N-Back task">Dual N-Back</button>
         </div>
         <div class="caps tight">Drills</div>
         <div class="split" role="group" aria-label="Cognitive drills">
@@ -486,6 +487,7 @@ function drawLaunchpad(){
           <li><b>Spatial+Verbal Bind:</b> remember triangle positions while judging picture initials.</li>
           <li><b>Cross-modal Binding:</b> remember colored shapes, then recall colors in order.</li>
           <li><b>N-Back (emotion):</b> spacebar on ${coachOn()?'adaptive':'1/2'}-back matches.</li>
+          <li><b>Dual N-Back:</b> position + audio matches (A and L keys).</li>
         </ul>
       </div>
       <div class="note">
@@ -1368,7 +1370,7 @@ function retakeQuiz() {
 function renderScores(){
   const s = store.get();
   const box = $('#scores');
-  const keyMeta = { span:'WM Span', spatial:'Spatial+Verbal', crossmodal:'Cross-modal', nback:'N-Back', filterPos:'Filter Positive', mult:'Mental Mult' };
+  const keyMeta = { span:'WM Span', spatial:'Spatial+Verbal', crossmodal:'Cross-modal', nback:'N-Back', dualNback:'Dual N-Back', filterPos:'Filter Positive', mult:'Mental Mult' };
   const fmt = new Intl.DateTimeFormat([], {month:'short', day:'2-digit', hour:'2-digit', minute:'2-digit'});
   box.innerHTML = '';
   Object.keys(keyMeta).forEach(k=>{
@@ -1436,6 +1438,7 @@ document.querySelectorAll('[data-run]').forEach(b=>{
     if (mode==='spatial') runSpatial();
     if (mode==='crossmodal') runCrossModal();
     if (mode==='nback') runNBack();
+    if (mode==='dualNback') runDualNBack();
     if (mode==='filterPos') runFilterPos();
     if (mode==='mult') runMult();
   };
@@ -1450,7 +1453,7 @@ function updateLaunchpadPBs() {
     },
     spatial: () => {
       const pb = getPersonalBest('spatial');
-      return pb !== null ? `Best: ${pb}/3` : null;
+      return pb !== null ? `Best: ${pb}/4` : null;
     },
     crossmodal: () => {
       const pb = getPersonalBest('crossmodal');
@@ -1462,6 +1465,12 @@ function updateLaunchpadPBs() {
       if (pb.acc2 !== undefined) return `2-back: ${pb.acc2}%`;
       if (pb.acc1 !== undefined) return `1-back: ${pb.acc1}%`;
       return null;
+    },
+    dualNback: () => {
+      const pb = getPersonalBest('dualNback');
+      if (!pb) return null;
+      const avg = Math.round((pb.posAcc + pb.audioAcc) / 2);
+      return `${pb.n}-back: ${avg}%`;
     },
     filterPos: () => {
       const pb = getPersonalBest('filterPos');
@@ -1795,6 +1804,201 @@ async function blockN(n, secs=60, doSave = true){
   });
 }
 
+/* ---------- 3.5) Dual N-Back ---------- */
+const dualNBackLetters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+const dualNBackPositions = [0, 1, 2, 3, 5, 6, 7, 8];
+
+async function runDualNBack() {
+  const n = 2;
+  const result = await dualNBackBlock(n);
+  const posAcc = result.posTotalTargets > 0 ? Math.round((result.posHits / result.posTotalTargets) * 100) : 0;
+  const audioAcc = result.audioTotalTargets > 0 ? Math.round((result.audioHits / result.audioTotalTargets) * 100) : 0;
+  const pb = isPersonalBest('dualNback', { posAcc, audioAcc, n });
+  const avgAcc = Math.round((posAcc + audioAcc) / 2);
+  const isGood = avgAcc >= 60;
+  const encourage = getEncouragement(isGood, pb);
+  const scoreStr = n + '-back: Pos ' + posAcc + '% / Audio ' + audioAcc + '%';
+  store.push('dualNback', { scoreStr, n, posHits: result.posHits, posMiss: result.posMiss, posFA: result.posFA, audioHits: result.audioHits, audioMiss: result.audioMiss, audioFA: result.audioFA, posAcc, audioAcc, personalBest: pb });
+  toast('Dual N-Back · ' + scoreStr + (pb ? ' 🏆 ' : ' · ') + encourage, pb ? 'ok' : isGood ? 'info' : 'info');
+  drawLaunchpad();
+}
+
+async function dualNBackBlock(n, secs) {
+  secs = secs || 60;
+  const trials = 25;
+  const posStream = [], audioStream = [];
+  for (let i = 0; i < trials; i++) {
+    posStream.push(dualNBackPositions[Math.floor(Math.random() * 8)]);
+    audioStream.push(dualNBackLetters[Math.floor(Math.random() * 8)]);
+  }
+  for (let i = n; i < trials; i += Math.floor(2 + Math.random() * 2)) { posStream[i] = posStream[i - n]; }
+  for (let i = n; i < trials; i += Math.floor(2 + Math.random() * 2)) { if (Math.random() > 0.3) audioStream[i] = audioStream[i - n]; }
+
+  return new Promise(async resolve => {
+    // Build UI using DOM methods
+    const container = document.createElement('div');
+    container.className = 'stack';
+    const h2 = document.createElement('h2');
+    h2.textContent = 'Dual N-Back (' + n + '-back) – ' + secs + 's';
+    container.appendChild(h2);
+    const instDiv = document.createElement('div');
+    instDiv.className = 'muted';
+    instDiv.textContent = 'Press A for position match, L for audio match';
+    container.appendChild(instDiv);
+
+    const grid = document.createElement('div');
+    grid.className = 'dual-grid';
+    grid.style.cssText = 'display:grid;grid-template-columns:repeat(3,60px);gap:8px;justify-content:center;margin:20px 0';
+    for (let i = 0; i < 9; i++) {
+      const cell = document.createElement('div');
+      cell.className = 'dual-cell' + (i === 4 ? ' center' : '');
+      cell.dataset.pos = i;
+      cell.style.cssText = 'width:60px;height:60px;background:' + (i === 4 ? '#0f1720' : '#1a2430') + ';border-radius:8px;transition:background 0.15s';
+      grid.appendChild(cell);
+    }
+    container.appendChild(grid);
+
+    const btnRow = document.createElement('div');
+    btnRow.className = 'row center';
+    btnRow.style.cssText = 'gap:20px;margin-top:16px';
+    const posBtn = document.createElement('button');
+    posBtn.id = 'posBtn';
+    posBtn.className = 'dual-btn';
+    posBtn.style.cssText = 'padding:12px 24px;font-size:16px;min-width:160px';
+    posBtn.textContent = 'Position Match (A)';
+    const audioBtn = document.createElement('button');
+    audioBtn.id = 'audioBtn';
+    audioBtn.className = 'dual-btn';
+    audioBtn.style.cssText = 'padding:12px 24px;font-size:16px;min-width:160px';
+    audioBtn.textContent = 'Audio Match (L)';
+    btnRow.appendChild(posBtn);
+    btnRow.appendChild(audioBtn);
+    container.appendChild(btnRow);
+
+    const statsRow = document.createElement('div');
+    statsRow.className = 'row center';
+    statsRow.style.cssText = 'gap:16px;margin-top:12px';
+    const posStats = document.createElement('div');
+    posStats.textContent = 'Pos: ';
+    const posHitsEl = document.createElement('span');
+    posHitsEl.className = 'ok';
+    posHitsEl.id = 'posHits';
+    posHitsEl.textContent = '0';
+    const posFAEl = document.createElement('span');
+    posFAEl.className = 'err';
+    posFAEl.id = 'posFA';
+    posFAEl.textContent = '0';
+    posStats.appendChild(posHitsEl);
+    posStats.appendChild(document.createTextNode('/'));
+    posStats.appendChild(posFAEl);
+    statsRow.appendChild(posStats);
+
+    const audioStats = document.createElement('div');
+    audioStats.textContent = 'Audio: ';
+    const audioHitsEl = document.createElement('span');
+    audioHitsEl.className = 'ok';
+    audioHitsEl.id = 'audioHits';
+    audioHitsEl.textContent = '0';
+    const audioFAEl = document.createElement('span');
+    audioFAEl.className = 'err';
+    audioFAEl.id = 'audioFA';
+    audioFAEl.textContent = '0';
+    audioStats.appendChild(audioHitsEl);
+    audioStats.appendChild(document.createTextNode('/'));
+    audioStats.appendChild(audioFAEl);
+    statsRow.appendChild(audioStats);
+
+    const timerDiv = document.createElement('div');
+    timerDiv.className = 'timer';
+    timerDiv.textContent = 'Time: ';
+    const timerEl = document.createElement('b');
+    timerEl.id = 't';
+    timerEl.textContent = secs;
+    timerDiv.appendChild(timerEl);
+    timerDiv.appendChild(document.createTextNode('s'));
+    statsRow.appendChild(timerDiv);
+    container.appendChild(statsRow);
+
+    screen.textContent = '';
+    screen.appendChild(container);
+
+    const cells = grid.querySelectorAll('.dual-cell');
+    let idx = 0, posHits = 0, posMiss = 0, posFA = 0, audioHits = 0, audioMiss = 0, audioFA = 0;
+    let canPressPos = true, canPressAudio = true;
+
+    const timerInterval = setInterval(() => {
+      const left = parseInt(timerEl.textContent, 10) - 1;
+      timerEl.textContent = left;
+      if (left <= 0) { clearInterval(timerInterval); cleanup(); finish(); }
+    }, 1000);
+
+    function speakLetter(letter) {
+      if ('speechSynthesis' in window) {
+        const utter = new SpeechSynthesisUtterance(letter);
+        utter.rate = 1.2;
+        utter.volume = 0.8;
+        speechSynthesis.speak(utter);
+      }
+    }
+
+    function handlePosResponse() {
+      if (!canPressPos) return;
+      const isTarget = idx >= n && posStream[idx] === posStream[idx - n];
+      if (isTarget) { posHits++; posHitsEl.textContent = posHits; }
+      else { posFA++; posFAEl.textContent = posFA; }
+      canPressPos = false;
+      posBtn.style.transform = 'scale(0.95)';
+      setTimeout(() => { posBtn.style.transform = ''; }, 150);
+    }
+
+    function handleAudioResponse() {
+      if (!canPressAudio) return;
+      const isTarget = idx >= n && audioStream[idx] === audioStream[idx - n];
+      if (isTarget) { audioHits++; audioHitsEl.textContent = audioHits; }
+      else { audioFA++; audioFAEl.textContent = audioFA; }
+      canPressAudio = false;
+      audioBtn.style.transform = 'scale(0.95)';
+      setTimeout(() => { audioBtn.style.transform = ''; }, 150);
+    }
+
+    const keyHandler = (e) => { if (e.code === 'KeyA') handlePosResponse(); if (e.code === 'KeyL') handleAudioResponse(); };
+    document.addEventListener('keydown', keyHandler);
+    posBtn.onclick = handlePosResponse;
+    audioBtn.onclick = handleAudioResponse;
+
+    function cleanup() { document.removeEventListener('keydown', keyHandler); clearInterval(timerInterval); }
+
+    async function step() {
+      if (idx >= posStream.length || parseInt(timerEl.textContent, 10) <= 0) { finish(); return; }
+      const pos = posStream[idx], letter = audioStream[idx];
+      cells.forEach(c => c.style.background = c.dataset.pos === '4' ? '#0f1720' : '#1a2430');
+      cells[pos].style.background = 'var(--brand)';
+      speakLetter(letter);
+      canPressPos = true;
+      canPressAudio = true;
+      await wait(2500);
+      const isPosTarget = idx >= n && posStream[idx] === posStream[idx - n];
+      const isAudioTarget = idx >= n && audioStream[idx] === audioStream[idx - n];
+      if (isPosTarget && canPressPos) posMiss++;
+      if (isAudioTarget && canPressAudio) audioMiss++;
+      cells.forEach(c => c.style.background = c.dataset.pos === '4' ? '#0f1720' : '#1a2430');
+      canPressPos = false;
+      canPressAudio = false;
+      idx++;
+      await wait(500);
+      step();
+    }
+    step();
+
+    function finish() {
+      cleanup();
+      const posTotalTargets = posStream.filter((p, i) => i >= n && p === posStream[i - n]).length;
+      const audioTotalTargets = audioStream.filter((a, i) => i >= n && a === audioStream[i - n]).length;
+      resolve({ posHits, posMiss, posFA, posTotalTargets, audioHits, audioMiss, audioFA, audioTotalTargets });
+    }
+  });
+}
+
 /* ---------- 4) Filter Positive ---------- */
 async function runFilterPos(){
   const pool=[...sample(wordBank.positive,6), ...sample(wordBank.negative,5), ...sample(wordBank.neutral,5)]; shuffle(pool);
@@ -1937,7 +2141,7 @@ function parseMultAcc(s){ const m=/(\d+)\/(\d+)/.exec(s||''); if(!m) return ''; 
 /* ---------- Analytics Functions ---------- */
 function calculateDomainScores(storeData, profile) {
   const domainMap = {
-    attention: ['nback', 'filterPos'],
+    attention: ['nback', 'dualNback', 'filterPos'],
     verbal: ['span', 'mult'],
     spatial: ['spatial', 'crossmodal']
   };
@@ -1954,6 +2158,7 @@ function calculateDomainScores(storeData, profile) {
       // Calculate average performance for this domain
       const scores = recent.map(r => {
         if (r.type === 'nback') return r.acc2 ?? r.acc1 ?? parseNAcc(r.scoreStr) ?? 50;
+        if (r.type === 'dualNback') return r.posAcc !== undefined ? Math.round((r.posAcc + r.audioAcc) / 2) : 50;
         if (r.type === 'filterPos') return r.acc ?? parseFilterAcc(r.scoreStr) ?? 50;
         if (r.type === 'span') {
           const level = r.bestLevel ?? r.level ?? parseSpanFromScore(r.scoreStr);
@@ -2070,7 +2275,7 @@ function renderStreakCalendar(activityMap) {
 function drawDomainChart(domain) {
   const s = store.get();
   const domainMap = {
-    attention: ['nback', 'filterPos'],
+    attention: ['nback', 'dualNback', 'filterPos'],
     verbal: ['span', 'mult'],
     spatial: ['spatial', 'crossmodal']
   };
@@ -2083,6 +2288,7 @@ function drawDomainChart(domain) {
 
   const scores = data.map(r => {
     if (r.type === 'nback') return r.acc2 ?? r.acc1 ?? parseNAcc(r.scoreStr) ?? 50;
+    if (r.type === 'dualNback') return r.posAcc !== undefined ? Math.round((r.posAcc + r.audioAcc) / 2) : 50;
     if (r.type === 'filterPos') return r.acc ?? parseFilterAcc(r.scoreStr) ?? 50;
     if (r.type === 'span') {
       const level = r.bestLevel ?? r.level ?? parseSpanFromScore(r.scoreStr);
