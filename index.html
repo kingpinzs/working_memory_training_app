@@ -3010,33 +3010,101 @@ async function runMult(){
 function multAnswer(expr){ const [L,R]=expr.split('x').map(Number); return L*R; }
 
 /* ---------- Coach Session Orchestrator ---------- */
-async function runCoachSession(){
-  if (!coachOn()){ toast('Enable Coach Mode for adaptive flow'); return; }
-  toast('Coach Session starting...');
 
-  // 1. Warm-up: Filter Positive
-  await runFilterPos();
+// Select tasks dynamically based on domain weaknesses
+function selectSessionTasks(storeData, profile) {
+  const domains = calculateDomainScores(storeData, profile);
+  const sessionLength = profile?.preferences?.sessionLength || 'quick';
 
-  // 2. Core: N-Back (adaptive)
-  const lastFP = (store.get().filterPos||[]).slice(-1)[0];
-  const nbackHistory = store.get().nback || [];
-  const startN = decideNFromHistory(nbackHistory);
-  const block1 = await blockN(startN, startN===1?50:60);
-  const acc1 = accPct(block1.hits,block1.miss,block1.fa);
+  // Rank domains by weakness (lowest score first)
+  const ranked = Object.entries(domains)
+    .sort((a, b) => a[1].current - b[1].current)
+    .map(([domain]) => domain);
 
-  if (startN===1 && acc1>=85 && block1.fa<=2){
-    toast('Promoting to 2-back!', 'ok');
-    const block2 = await blockN(2,60);
-    finishNBack({b1:block1,b2:block2});
+  // Map domains to recommended tasks
+  const domainTasks = {
+    attention: 'nback',
+    verbal: 'span',
+    spatial: 'spatial'
+  };
+
+  // Build task list based on session length
+  const tasks = [];
+
+  // Always start with warm-up
+  tasks.push('filterPos');
+
+  // Add tasks for weakest domains first
+  if (sessionLength === 'quick') {
+    // Quick: warm-up + 2 core tasks (weakest 2 domains)
+    ranked.slice(0, 2).forEach(domain => {
+      tasks.push(domainTasks[domain]);
+    });
   } else {
-    finishNBack(startN===1?{b1:block1}:{b2:block1});
+    // Deep: warm-up + all 3 domain tasks + finisher
+    ranked.forEach(domain => {
+      tasks.push(domainTasks[domain]);
+    });
+    tasks.push('mult'); // Mental mult as finisher
   }
 
-  // 3. Spatial Binding
-  await runSpatial();
+  // If attention is strong (≥75%), consider Dual N-Back instead
+  if (domains.attention.current >= 75 && tasks.includes('nback')) {
+    const idx = tasks.indexOf('nback');
+    tasks[idx] = 'dualNback';
+  }
 
-  // 4. Finisher: Mental Multiplication
-  await runMult();
+  return tasks;
+}
+
+async function runCoachSession(){
+  if (!coachOn()){ toast('Enable Coach Mode for adaptive flow'); return; }
+
+  const storeData = store.get();
+  const profile = profileStore.get();
+  const tasks = selectSessionTasks(storeData, profile);
+
+  toast(`Coach Session: ${tasks.length} tasks`);
+
+  for (const task of tasks) {
+    switch (task) {
+      case 'filterPos':
+        await runFilterPos();
+        break;
+
+      case 'nback':
+        // Adaptive N-Back with auto-promotion
+        const nbackHistory = storeData.nback || [];
+        const startN = decideNFromHistory(nbackHistory);
+        const block1 = await blockN(startN, startN===1?50:60);
+        const acc1 = accPct(block1.hits,block1.miss,block1.fa);
+
+        if (startN===1 && acc1>=85 && block1.fa<=2){
+          toast('Promoting to 2-back!', 'ok');
+          const block2 = await blockN(2,60);
+          finishNBack({b1:block1,b2:block2});
+        } else {
+          finishNBack(startN===1?{b1:block1}:{b2:block1});
+        }
+        break;
+
+      case 'dualNback':
+        await runDualNBack();
+        break;
+
+      case 'span':
+        await runSpan();
+        break;
+
+      case 'spatial':
+        await runSpatial();
+        break;
+
+      case 'mult':
+        await runMult();
+        break;
+    }
+  }
 
   toast('Coach Session complete!', 'ok');
   drawLaunchpad();
