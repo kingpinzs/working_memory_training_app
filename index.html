@@ -1825,6 +1825,13 @@ function openSettings() {
           </label>
           <div><b>Countdown Mode</b> <span class="muted">30s limit for Filter</span></div>
         </div>
+
+        <div class="row" title="Use addition instead of multiplication">
+          <label class="switch">
+            <input id="additionModeToggle" type="checkbox" ${p.additionMode ? 'checked' : ''}>
+          </label>
+          <div><b>Addition Mode</b> <span class="muted">add instead of multiply</span></div>
+        </div>
       </div>
 
       <div class="card stack">
@@ -1887,6 +1894,13 @@ function openSettings() {
     p.countdownMode = e.target.checked;
     prefs.set(p);
     toast(`Countdown Mode ${p.countdownMode ? 'ON' : 'OFF'}`);
+  };
+
+  $('#additionModeToggle').onchange = (e) => {
+    const p = prefs.get();
+    p.additionMode = e.target.checked;
+    prefs.set(p);
+    toast(`Addition Mode ${p.additionMode ? 'ON' : 'OFF'}`);
   };
 
   $('#settingsCoachToggle').onchange = (e) => {
@@ -3507,19 +3521,28 @@ async function runFilterPos(){
   });
 }
 
-/* ---------- 5) Mental Multiplication ---------- */
+/* ---------- 5) Mental Math (Multiplication or Addition) ---------- */
+// Multiplication problems
+const multProblems = ["78x4","33x5","25x8","45x3","23x34","12x24","17x55","64x70","56x3","42x6","15x9","82x4","35x7","48x5","27x8","63x4"];
+// Addition problems (challenging multi-digit sums)
+const addProblems = ["78+45","33+89","125+88","245+137","523+348","612+294","417+555","364+278","156+347","242+689","315+498","182+479","635+287","448+356","527+386","763+458"];
+
 async function runMult(){
-  const allProblems = ["78x4","33x5","25x8","45x3","23x34","12x24","17x55","64x70","56x3","42x6","15x9","82x4","35x7","48x5","27x8","63x4"];
+  const useAddition = prefs.get().additionMode;
+  const allProblems = useAddition ? addProblems : multProblems;
   const problems = sample(allProblems, 10);
   let idx=0, correct=0;
   const useTimer = prefs.get().timePressure;
   const timePerProblem = 15; // 15 seconds per problem
   let timerInterval = null;
 
+  const taskTitle = useAddition ? 'Mental Addition' : 'Mental Multiplication';
+  const taskHint = useAddition ? 'Add the numbers mentally.' : 'Compute left→right with a rolling sum.';
+
   screen.innerHTML = `
     <div class="stack">
-      <h2>Mental Multiplication</h2>
-      <div class="muted">Compute left→right with a rolling sum.</div>
+      <h2>${taskTitle}</h2>
+      <div class="muted">${taskHint}</div>
       <div id="q" class="big mono"></div>
       ${useTimer ? `<div id="timer" class="muted center" style="font-size:1.5rem;color:var(--warn)"></div>` : ''}
       <form id="f" class="row">
@@ -3531,6 +3554,24 @@ async function runMult(){
   const q=$('#q'), f=$('#f'), a=$('#a'), res=$('#res');
   const timerEl = useTimer ? $('#timer') : null;
 
+  function getAnswer(expr) {
+    if (useAddition) {
+      const [L,R] = expr.split('+').map(Number);
+      return L + R;
+    } else {
+      const [L,R] = expr.split('x').map(Number);
+      return L * R;
+    }
+  }
+
+  function formatProblem(expr) {
+    if (useAddition) {
+      return expr.replace('+', ' + ');
+    } else {
+      return expr.replace('x', ' × ');
+    }
+  }
+
   async function show(){
       if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
       if (idx >= problems.length) {
@@ -3539,7 +3580,7 @@ async function runMult(){
           const cmp = getPerformanceComparison('mult', acc);
           const isGood = acc >= 70; // 70%+ (7/10) is good
           const encourage = getEncouragement(isGood, pb);
-          store.push('mult',{scoreStr:`${correct}/${problems.length}`, acc, personalBest: pb});
+          store.push('mult',{scoreStr:`${correct}/${problems.length}`, acc, personalBest: pb, additionMode: useAddition});
 
           const resultHtml = `
             <div class="big">${correct}/${problems.length}${pb ? ' 🏆' : ''}</div>
@@ -3547,10 +3588,10 @@ async function runMult(){
             <div class="muted" style="margin-top:4px">${cmp || ''}</div>
             <div style="margin-top:8px">${encourage}</div>
           `;
-          await showTaskComplete('Mental Mult', resultHtml, () => runMult());
+          await showTaskComplete(useAddition ? 'Mental Add' : 'Mental Mult', resultHtml, () => runMult());
           return;
       }
-      q.textContent = problems[idx].replace('x',' × ');
+      q.textContent = formatProblem(problems[idx]);
       a.focus();
 
       // Start timer for this problem
@@ -3565,7 +3606,7 @@ async function runMult(){
           if (timeRemaining <= 0) {
             clearInterval(timerInterval);
             timerInterval = null;
-            res.innerHTML = `<span class="err">Time's up!</span> <span class="muted">→ ${multAnswer(problems[idx])}</span>`;
+            res.innerHTML = `<span class="err">Time's up!</span> <span class="muted">→ ${getAnswer(problems[idx])}</span>`;
             idx++; a.value='';
             setTimeout(show, 800);
           }
@@ -3578,7 +3619,7 @@ async function runMult(){
   f.onsubmit=(e)=>{
     e.preventDefault();
     if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
-    const want=multAnswer(problems[idx]); const got=parseInt(a.value,10);
+    const want=getAnswer(problems[idx]); const got=parseInt(a.value,10);
     if (got===want){ correct++; res.innerHTML = `<span class="ok">Correct</span>`; }
     else res.innerHTML = `<span class="err">Incorrect</span> <span class="muted">→ ${want}</span>`;
     idx++; a.value='';

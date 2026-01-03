@@ -141,7 +141,7 @@ function decideNFromHistory(sessions) {
 | Time limit option | Optional countdown per problem | Low | ✅ Session 9 |
 | Personal best | Track best accuracy streak | Low | ✅ Exists |
 | More problems | Increase from 6 to 10 for deeper practice | Low | ✅ Session 8 |
-| Operation variety | Add division or addition modes | Medium | ❌ Deferred |
+| Operation variety | Add division or addition modes | Medium | ✅ Session 9 |
 
 ---
 
