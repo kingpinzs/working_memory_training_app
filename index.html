@@ -3302,11 +3302,16 @@ async function runMult(){
   const allProblems = ["78x4","33x5","25x8","45x3","23x34","12x24","17x55","64x70","56x3","42x6","15x9","82x4","35x7","48x5","27x8","63x4"];
   const problems = sample(allProblems, 10);
   let idx=0, correct=0;
+  const useTimer = prefs.get().timePressure;
+  const timePerProblem = 15; // 15 seconds per problem
+  let timerInterval = null;
+
   screen.innerHTML = `
     <div class="stack">
       <h2>Mental Multiplication</h2>
       <div class="muted">Compute left→right with a rolling sum.</div>
       <div id="q" class="big mono"></div>
+      ${useTimer ? `<div id="timer" class="muted center" style="font-size:1.5rem;color:var(--warn)"></div>` : ''}
       <form id="f" class="row">
         <input id="a" class="mono" placeholder="answer" style="flex:1;padding:10px;border-radius:8px;border:1px solid #31435f;background:#0f1720;color:var(--ink)" />
         <button class="primary">Submit</button>
@@ -3314,8 +3319,10 @@ async function runMult(){
       <div id="res" class="muted"></div>
     </div>`;
   const q=$('#q'), f=$('#f'), a=$('#a'), res=$('#res');
-  
+  const timerEl = useTimer ? $('#timer') : null;
+
   async function show(){
+      if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
       if (idx >= problems.length) {
           const acc = Math.round((correct/problems.length)*100);
           const pb = isPersonalBest('mult', acc);
@@ -3335,16 +3342,36 @@ async function runMult(){
       }
       q.textContent = problems[idx].replace('x',' × ');
       a.focus();
+
+      // Start timer for this problem
+      if (useTimer) {
+        let timeRemaining = timePerProblem;
+        timerEl.textContent = `⏱️ ${timeRemaining}s`;
+        timerEl.style.color = 'var(--warn)';
+        timerInterval = setInterval(() => {
+          timeRemaining--;
+          timerEl.textContent = `⏱️ ${timeRemaining}s`;
+          if (timeRemaining <= 3) timerEl.style.color = 'var(--err)';
+          if (timeRemaining <= 0) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+            res.innerHTML = `<span class="err">Time's up!</span> <span class="muted">→ ${multAnswer(problems[idx])}</span>`;
+            idx++; a.value='';
+            setTimeout(show, 800);
+          }
+        }, 1000);
+      }
   }
 
   show();
 
   f.onsubmit=(e)=>{
     e.preventDefault();
+    if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
     const want=multAnswer(problems[idx]); const got=parseInt(a.value,10);
     if (got===want){ correct++; res.innerHTML = `<span class="ok">Correct</span>`; }
     else res.innerHTML = `<span class="err">Incorrect</span> <span class="muted">→ ${want}</span>`;
-    idx++; a.value=''; 
+    idx++; a.value='';
     setTimeout(show, 800);
   };
 }
