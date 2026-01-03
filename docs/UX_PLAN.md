@@ -100,7 +100,7 @@
 | Larger touch targets | Minimum 44px for buttons/taps | Low | ✅ Phase 1 |
 | Swipe navigation | Swipe left/right between tabs | Medium | ❌ Deferred |
 | Responsive task layout | Stack elements vertically on small screens | Medium | ❌ Deferred |
-| Hide keyboard on task start | Auto-dismiss keyboard in N-Back | Low | ❌ Deferred |
+| Hide keyboard on task start | Auto-dismiss keyboard in N-Back | Low | ✅ Session 8 |
 
 ### 2.5 Keyboard Shortcuts
 
