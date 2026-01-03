@@ -51,13 +51,13 @@ This roadmap builds on the existing Working Memory Lab application. Each phase i
 
 ### Tasks
 
-| Task | Description | Effort | File |
-|------|-------------|--------|------|
-| 2.1 Multiple word lists | Add 3 alternative lists per span level | 1h | spanLists object |
-| 2.2 Trend arrows | Add up/down/flat arrows on dashboard | 2h | drawDashboard() |
-| 2.3 Performance comparison | "5% better than last time" on results | 2h | Task finish screens |
-| 2.4 Encouragement messages | Persona-based feedback after tasks | 2h | Task finish screens |
-| 2.5 Level 4 spatial | Add 5-item level to Spatial+Verbal | 1h | runSpatial() |
+| Task | Description | Effort | File | Status |
+|------|-------------|--------|------|--------|
+| 2.1 Multiple word lists | Add 3 alternative lists per span level | 1h | spanLists object | ✅ |
+| 2.2 Trend arrows | Add up/down/flat arrows on dashboard | 2h | drawDashboard() | ✅ (pre-existing) |
+| 2.3 Performance comparison | "5% better than last time" on results | 2h | Task finish screens | ✅ |
+| 2.4 Encouragement messages | Persona-based feedback after tasks | 2h | Task finish screens | ✅ |
+| 2.5 Level 4 spatial | Add 5-item level to Spatial+Verbal | 1h | runSpatial() | ✅ |
 
 ### Acceptance Criteria
 - WM Span uses different words each session

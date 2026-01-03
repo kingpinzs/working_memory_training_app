@@ -1549,7 +1549,7 @@ function spanTrial(level, words, doSave = true){
 /* ---------- 2) Spatial + Verbal ---------- */
 async function runSpatial(){
   let level = 1, cleared=0;
-  const maxLevel = 3;
+  const maxLevel = 4; // L1=2, L2=3, L3=4, L4=5 items
   while (level<=maxLevel){
     const ok = await spatialLevel(level);
     if (ok){ cleared++; level++; } else break;
@@ -1960,7 +1960,7 @@ function calculateDomainScores(storeData, profile) {
           return Math.min(100, (level / 5) * 100); // Level 5 = 100%
         }
         if (r.type === 'mult') return r.acc ?? parseMultAcc(r.scoreStr) ?? 50;
-        if (r.type === 'spatial') return (r.cleared / 3) * 100;
+        if (r.type === 'spatial') return (r.cleared / 4) * 100; // Max 4 levels
         if (r.type === 'crossmodal') return (r.cleared / 3) * 100;
         return 50;
       }).filter(s => Number.isFinite(s));
@@ -2089,7 +2089,7 @@ function drawDomainChart(domain) {
       return Math.min(100, (level / 5) * 100);
     }
     if (r.type === 'mult') return r.acc ?? parseMultAcc(r.scoreStr) ?? 50;
-    if (r.type === 'spatial') return (r.cleared / 3) * 100;
+    if (r.type === 'spatial') return (r.cleared / 4) * 100; // Max 4 levels
     if (r.type === 'crossmodal') return (r.cleared / 3) * 100;
     return 50;
   });
@@ -2550,7 +2550,7 @@ function calculateLifestyleCorrelations(taskData, lifestyleData) {
         performance = (level / 5) * 100; // Normalize to 0-100
       } else if (session.type === 'spatial') {
         const cleared = session.cleared || 0;
-        performance = (cleared / 3) * 100; // Normalize to 0-100
+        performance = (cleared / 4) * 100; // Normalize to 0-100 (max 4 levels)
       } else if (session.type === 'filterPos') {
         performance = session.acc || parseFilterAcc(session.scoreStr) || 0;
       } else if (session.type === 'mult') {
