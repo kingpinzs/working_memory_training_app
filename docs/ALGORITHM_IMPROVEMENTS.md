@@ -335,7 +335,7 @@ Filter Positive -> N-Back -> Spatial+Verbal -> Mental Mult
 | Rolling window for N-Back | Low | Medium | P1 | ✅ Phase 1 |
 | Personal best tracking | Low | Medium | P1 | ✅ Phase 1 |
 | Add 3-back level | Medium | Low | P3 | ✅ Phase 6 |
-| 2-up/1-down staircase | Medium | Low | P3 | ❌ Deferred |
+| 2-up/1-down staircase | Medium | Low | P3 | ✅ Session 9 |
 | Response time tracking | High | Medium | P4 | ✅ Phase 7 |
 | Dynamic Coach Session | Medium | Medium | P2 | ✅ Session 8 |
 | Week-over-week trends | Low | Low | P3 | ✅ Phase 4 |

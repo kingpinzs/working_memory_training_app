@@ -622,9 +622,11 @@ function drawLaunchpad(){
 function drawDashboard() {
   const profile = profileStore.get();
   const s = store.get();
-  
-  const totalRuns = Object.values(s).flat().length;
-  const lastRun = Object.values(s).flat().sort((a,b) => new Date(b.ts) - new Date(a.ts))[0];
+
+  // Filter out non-array entries like _schemaVersion
+  const allRuns = Object.values(s).filter(Array.isArray).flat();
+  const totalRuns = allRuns.length;
+  const lastRun = allRuns.sort((a,b) => new Date(b.ts) - new Date(a.ts))[0];
 
   // Calculate cognitive domain scores
   const domainScores = calculateDomainScores(s, profile);
@@ -659,27 +661,27 @@ function drawDashboard() {
       <div class="split" ${!hasData ? 'style="opacity:0.5"' : ''}>
         <div class="card stack domain-card" data-domain="attention" style="cursor:pointer">
           <div class="caps tight">Attention</div>
-          <div class="big">${domainScores.attention.current}%</div>
+          <div class="big domain-score" data-animate="${domainScores.attention.current}" data-suffix="%">0%</div>
           <div class="muted">
-            ${domainScores.attention.trend > 0 ? '↗' : domainScores.attention.trend < 0 ? '↘' : '→'} 
+            ${domainScores.attention.trend > 0 ? '↗' : domainScores.attention.trend < 0 ? '↘' : '→'}
             ${domainScores.attention.change >= 0 ? '+' : ''}${domainScores.attention.change}% vs baseline
           </div>
           <div class="muted" style="font-size:11px">N-Back, Filter tasks</div>
         </div>
         <div class="card stack domain-card" data-domain="verbal" style="cursor:pointer">
           <div class="caps tight">Verbal WM</div>
-          <div class="big">${domainScores.verbal.current}%</div>
+          <div class="big domain-score" data-animate="${domainScores.verbal.current}" data-suffix="%">0%</div>
           <div class="muted">
-            ${domainScores.verbal.trend > 0 ? '↗' : domainScores.verbal.trend < 0 ? '↘' : '→'} 
+            ${domainScores.verbal.trend > 0 ? '↗' : domainScores.verbal.trend < 0 ? '↘' : '→'}
             ${domainScores.verbal.change >= 0 ? '+' : ''}${domainScores.verbal.change}% vs baseline
           </div>
           <div class="muted" style="font-size:11px">Span, Multiplication</div>
         </div>
         <div class="card stack domain-card" data-domain="spatial" style="cursor:pointer">
           <div class="caps tight">Spatial WM</div>
-          <div class="big">${domainScores.spatial.current}%</div>
+          <div class="big domain-score" data-animate="${domainScores.spatial.current}" data-suffix="%">0%</div>
           <div class="muted">
-            ${domainScores.spatial.trend > 0 ? '↗' : domainScores.spatial.trend < 0 ? '↘' : '→'} 
+            ${domainScores.spatial.trend > 0 ? '↗' : domainScores.spatial.trend < 0 ? '↘' : '→'}
             ${domainScores.spatial.change >= 0 ? '+' : ''}${domainScores.spatial.change}% vs baseline
           </div>
           <div class="muted" style="font-size:11px">Spatial, Cross-modal</div>
@@ -775,6 +777,13 @@ function drawDashboard() {
 
   // Render streak calendar
   renderStreakCalendar(streakData.activity);
+
+  // Animate domain score numbers (count-up effect)
+  document.querySelectorAll('.domain-score[data-animate]').forEach(el => {
+    const target = parseInt(el.dataset.animate) || 0;
+    const suffix = el.dataset.suffix || '';
+    animateNumber(el, 0, target, 800, suffix);
+  });
 
   // Render recent wins
   renderRecentWins();
@@ -878,6 +887,18 @@ function drawLifestyle() {
           <label for="exercise" style="width:100px">Exercise (mins)</label>
           <input type="number" id="exercise" step="5" min="0" max="240" value="${data.exercise || ''}" style="width:80px;padding:8px;border-radius:8px;border:1px solid #31435f;background:#0f1720;color:var(--ink)">
         </div>
+        <div class="row" style="align-items:center">
+          <label style="width:100px">Stress Level</label>
+          <div id="stressButtons" class="button-group" style="display:flex;gap:4px">
+            <button type="button" data-stress="1" class="${data.stress === 1 ? 'good' : ''}">1</button>
+            <button type="button" data-stress="2" class="${data.stress === 2 ? 'good' : ''}">2</button>
+            <button type="button" data-stress="3" class="${data.stress === 3 ? 'good' : ''}">3</button>
+            <button type="button" data-stress="4" class="${data.stress === 4 ? 'good' : ''}">4</button>
+            <button type="button" data-stress="5" class="${data.stress === 5 ? 'good' : ''}">5</button>
+          </div>
+          <span class="muted" style="margin-left:8px">(1=low, 5=high)</span>
+        </div>
+        <input type="hidden" id="stress" value="${data.stress || ''}">
         <div class="row">
             <button type="submit" class="primary">Save Today's Log</button>
         </div>
@@ -886,6 +907,15 @@ function drawLifestyle() {
     </div>
   `;
 
+  // Stress button handlers
+  document.querySelectorAll('#stressButtons button').forEach(btn => {
+    btn.onclick = () => {
+      document.querySelectorAll('#stressButtons button').forEach(b => b.classList.remove('good'));
+      btn.classList.add('good');
+      $('#stress').value = btn.dataset.stress;
+    };
+  });
+
   $('#lifestyleForm').onsubmit = (e) => {
     e.preventDefault();
     const today = new Date().toISOString().slice(0, 10);
@@ -893,6 +923,7 @@ function drawLifestyle() {
     currentData[today] = {
       sleep: parseFloat($('#sleep').value) || null,
       exercise: parseInt($('#exercise').value) || null,
+      stress: parseInt($('#stress').value) || null,
     };
     lifestyleStore.set(currentData);
     $('#lifestyle-confirm').textContent = 'Saved!';
@@ -2216,14 +2247,37 @@ function updateLaunchpadPBs() {
 updateLaunchpadPBs();
 
 /* ---------- 1) WM Span ---------- */
+// 2-up/1-down staircase: need 2 consecutive successes to advance, 1 failure to drop
 async function runSpan(doSave = true){
-  const levels = [1,2,3,4,5,6];
+  const maxLevel = 6;
+  let level = 1;
   let bestLevel = 0;
-  for (const lv of levels){
-    const words = getSpanWords(lv); // Use random word list for variety
-    const ok = await spanTrial(lv, words, doSave);
-    if (ok){ bestLevel = lv; } else break;
+  let consecutiveSuccess = 0;
+  let trials = 0;
+  const maxTrials = 12; // Safety limit to prevent infinite loops
+
+  while (level >= 1 && level <= maxLevel && trials < maxTrials) {
+    trials++;
+    const words = getSpanWords(level); // Use random word list for variety
+    const ok = await spanTrial(level, words, doSave);
+
+    if (ok) {
+      if (level > bestLevel) bestLevel = level;
+      consecutiveSuccess++;
+
+      // 2-up: Need 2 consecutive successes to advance
+      if (consecutiveSuccess >= 2) {
+        level++;
+        consecutiveSuccess = 0;
+      }
+    } else {
+      // 1-down: Single failure drops level or ends
+      if (level === 1) break; // Already at minimum, end task
+      level--;
+      consecutiveSuccess = 0;
+    }
   }
+
   if (doSave) {
     const pb = isPersonalBest('span', bestLevel);
     const cmp = getPerformanceComparison('span', bestLevel);
@@ -3896,7 +3950,8 @@ async function runCoachSession(){
 function exportCsv(){
   const s = store.get();
   const rows = [['type','label','scoreStr','bestLevel','level','cleared','acc','acc1','acc2','fa1','fa2','time','ts']];
-  Object.values(s).flat().forEach(r=>{
+  // Filter out non-array entries like _schemaVersion
+  Object.values(s).filter(Array.isArray).flat().forEach(r=>{
       rows.push([
         r.type||'', r.label||'', r.scoreStr||'', nv(r.bestLevel), nv(r.level), nv(r.cleared),
         nv(r.acc), nv(r.acc1), nv(r.acc2), nv(r.fa1), nv(r.fa2), nv(r.time), r.ts||''
@@ -4040,18 +4095,56 @@ function calculateDomainScores(storeData, profile) {
 }
 
 function updateStreak(storeData) {
-  // Get all unique training days
-  const allEntries = Object.values(storeData).flat();
-  const dates = allEntries
-    .map(entry => new Date(entry.ts).toISOString().slice(0, 10))
-    .filter((date, index, self) => self.indexOf(date) === index)
+  // Get all entries and group by date with performance scores
+  // Filter out non-array entries like _schemaVersion
+  const allEntries = Object.values(storeData).filter(Array.isArray).flat();
+
+  // Calculate average performance per day (quality-based streak)
+  const dailyPerformance = {};
+  allEntries.forEach(entry => {
+    const date = new Date(entry.ts).toISOString().slice(0, 10);
+    if (!dailyPerformance[date]) {
+      dailyPerformance[date] = { scores: [], count: 0 };
+    }
+
+    // Extract performance score from entry
+    let score = null;
+    if (entry.type === 'nback') {
+      score = entry.acc2 || entry.acc1 || parseNAcc(entry.scoreStr) || 0;
+    } else if (entry.type === 'span') {
+      const level = entry.bestLevel || entry.level || parseSpanFromScore(entry.scoreStr) || 0;
+      score = (level / 6) * 100;
+    } else if (entry.type === 'spatial') {
+      const cleared = entry.cleared || 0;
+      score = (cleared / 4) * 100;
+    } else if (entry.type === 'filterPos') {
+      score = entry.acc || parseFilterAcc(entry.scoreStr) || 50;
+    } else if (entry.type === 'mult') {
+      score = entry.acc || parseMultAcc(entry.scoreStr) || 50;
+    }
+
+    if (score !== null) {
+      dailyPerformance[date].scores.push(score);
+    }
+    dailyPerformance[date].count++;
+  });
+
+  // Minimum 50% average performance required for streak day
+  const minPerformance = 50;
+  const qualityDates = Object.keys(dailyPerformance)
+    .filter(date => {
+      const day = dailyPerformance[date];
+      if (day.scores.length === 0) return day.count > 0; // Allow if no scores tracked
+      const avgScore = day.scores.reduce((a, b) => a + b, 0) / day.scores.length;
+      return avgScore >= minPerformance;
+    })
     .sort();
 
-  if (dates.length === 0) {
-    return { current: 0, longest: 0, activity: [] };
+  if (qualityDates.length === 0) {
+    return { current: 0, longest: 0, activity: {} };
   }
 
-  // Calculate streaks
+  // Calculate streaks using quality dates
   let currentStreak = 0;
   let longestStreak = 0;
   let tempStreak = 1;
@@ -4059,13 +4152,13 @@ function updateStreak(storeData) {
   const today = new Date().toISOString().slice(0, 10);
   const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
 
-  // Check if current streak is active (trained today or yesterday)
-  const lastTrainingDate = dates[dates.length - 1];
-  const isStreakActive = lastTrainingDate === today || lastTrainingDate === yesterday;
+  // Check if current streak is active (quality training today or yesterday)
+  const lastQualityDate = qualityDates[qualityDates.length - 1];
+  const isStreakActive = lastQualityDate === today || lastQualityDate === yesterday;
 
-  for (let i = 1; i < dates.length; i++) {
-    const prevDate = new Date(dates[i - 1]);
-    const currDate = new Date(dates[i]);
+  for (let i = 1; i < qualityDates.length; i++) {
+    const prevDate = new Date(qualityDates[i - 1]);
+    const currDate = new Date(qualityDates[i]);
     const diffDays = Math.round((currDate - prevDate) / 86400000);
 
     if (diffDays === 1) {
@@ -4079,7 +4172,7 @@ function updateStreak(storeData) {
   longestStreak = Math.max(longestStreak, tempStreak);
   currentStreak = isStreakActive ? tempStreak : 0;
 
-  // Build activity map (last 84 days for 12-week calendar)
+  // Build activity map with quality indication (last 84 days for 12-week calendar)
   const activityMap = {};
   allEntries.forEach(entry => {
     const date = new Date(entry.ts).toISOString().slice(0, 10);
@@ -4848,11 +4941,28 @@ function toast(msg, type = 'info'){
   setTimeout(()=>{ t.remove(); }, type === 'err' ? 3000 : 2000);
 }
 
+// Score increment animation utility
+function animateNumber(element, startVal, endVal, duration = 600, suffix = '') {
+  const startTime = performance.now();
+  const update = (currentTime) => {
+    const elapsed = currentTime - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    // Ease-out cubic for smooth deceleration
+    const eased = 1 - Math.pow(1 - progress, 3);
+    const current = Math.round(startVal + (endVal - startVal) * eased);
+    element.textContent = current + suffix;
+    if (progress < 1) {
+      requestAnimationFrame(update);
+    }
+  };
+  requestAnimationFrame(update);
+}
+
 // Task completion screen with action buttons
 function showTaskComplete(taskName, resultHtml, retryFn) {
   return new Promise(resolve => {
     screen.innerHTML = `
-      <div class="stack" style="text-align:center; max-width:400px; margin:auto; padding-top:40px">
+      <div class="stack task-success" style="text-align:center; max-width:400px; margin:auto; padding-top:40px">
         <div style="font-size:48px; margin-bottom:16px">✓</div>
         <h2 class="caps">${taskName} Complete</h2>
         <div class="card" style="margin:16px 0">
@@ -4863,6 +4973,13 @@ function showTaskComplete(taskName, resultHtml, retryFn) {
           <button id="backToLaunchpad" class="primary" style="min-width:120px">Continue</button>
         </div>
       </div>`;
+
+    // Animate any numbers with data-animate attribute
+    document.querySelectorAll('[data-animate]').forEach(el => {
+      const target = parseInt(el.dataset.animate) || 0;
+      const suffix = el.dataset.suffix || '';
+      animateNumber(el, 0, target, 600, suffix);
+    });
 
     document.getElementById('tryAgain').onclick = () => {
       resolve('retry');
@@ -5425,10 +5542,11 @@ function checkPersonaSurveyTrigger() {
   if (profile.personaValidation) {
     // If dismissed, never show again
     if (profile.personaValidation.action === 'dismissed') return;
-    
+
     // If reminded later, check if enough sessions have passed
     if (profile.personaValidation.action === 'remind_later') {
-      const sessionsSinceReminder = Object.values(store.get()).flat().filter(entry => 
+      const storeData = store.get();
+      const sessionsSinceReminder = Object.values(storeData).filter(Array.isArray).flat().filter(entry =>
         new Date(entry.ts) > new Date(profile.personaValidation.timestamp)
       ).length;
       if (sessionsSinceReminder < 5) return; // Wait 5 more sessions
@@ -5437,9 +5555,10 @@ function checkPersonaSurveyTrigger() {
       return;
     }
   }
-  
+
   // Check total sessions
-  const totalSessions = Object.values(store.get()).flat().length;
+  const storeData = store.get();
+  const totalSessions = Object.values(storeData).filter(Array.isArray).flat().length;
   if (totalSessions < 3) return;
   
   // Show survey
@@ -5451,10 +5570,13 @@ function renderScoresPaginated(page = 1, perPage = 10) {
   const s = store.get();
   const scores = $('#scores');
   if (!scores) return;
-  
-  const allEntries = Object.entries(s).flatMap(([key, arr]) =>
-    (arr || []).map(r => ({ ...r, key }))
-  ).sort((a, b) => new Date(b.ts) - new Date(a.ts));
+
+  // Filter out non-array entries like _schemaVersion
+  const allEntries = Object.entries(s)
+    .filter(([key, arr]) => Array.isArray(arr))
+    .flatMap(([key, arr]) =>
+      arr.map(r => ({ ...r, key }))
+    ).sort((a, b) => new Date(b.ts) - new Date(a.ts));
   
   const totalPages = Math.ceil(allEntries.length / perPage);
   const startIdx = (page - 1) * perPage;

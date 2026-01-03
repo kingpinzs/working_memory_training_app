@@ -176,12 +176,12 @@ Profile contains:
 - **Enhancement:** Implement actual micro-task feed as designed in PRD
 
 ### Lifestyle Correlation
-- **Issue:** Requires manual date matching, doesn't track stress
-- **Enhancement:** Add stress input, better correlation visualization
+- **Issue:** ✅ FIXED - Now tracks stress with 1-5 scale input
+- **Enhancement:** ✅ Stress input added to lifestyle logging (Session 9)
 
 ### Streak System
-- **Issue:** Binary streak (any training = counts), no quality metric
-- **Enhancement:** Require minimum performance or session count
+- **Issue:** ✅ FIXED - Now requires 50% average performance for streak days
+- **Enhancement:** ✅ Quality-based streak implemented (Session 9)
 
 ---
 
