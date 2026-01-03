@@ -116,13 +116,13 @@ function decideNFromHistory(sessions) {
 
 **Specific Improvements:**
 
-| Improvement | Description | Effort |
-|-------------|-------------|--------|
-| Larger word pool | Expand from 16 to 24-30 words | Low |
-| Difficulty levels | Easy (12 words), Medium (18), Hard (24) | Medium |
-| Category variants | Filter the Calm (relaxation words) or Filter the Strong (strength words) | Medium |
-| Countdown mode | 30-second limit, score by words found | Medium |
-| Streak tracking | Track consecutive perfect sessions | Low |
+| Improvement | Description | Effort | Status |
+|-------------|-------------|--------|--------|
+| Larger word pool | Expand from 16 to 24-30 words | Low | ✅ Session 8 |
+| Difficulty levels | Easy (12 words), Medium (18), Hard (24) | Medium | ❌ Deferred |
+| Category variants | Filter the Calm (relaxation words) or Filter the Strong (strength words) | Medium | ❌ Deferred |
+| Countdown mode | 30-second limit, score by words found | Medium | ❌ Deferred |
+| Streak tracking | Track consecutive perfect sessions | Low | ❌ Deferred |
 
 ---
 
@@ -135,13 +135,13 @@ function decideNFromHistory(sessions) {
 
 **Specific Improvements:**
 
-| Improvement | Description | Effort |
-|-------------|-------------|--------|
-| Difficulty tiers | Easy (single digit), Medium (2x1 digit), Hard (2x2 digit) | Medium |
-| Time limit option | Optional countdown per problem | Low |
-| Personal best | Track best accuracy streak | Low |
-| More problems | Increase from 6 to 10 for deeper practice | Low |
-| Operation variety | Add division or addition modes | Medium |
+| Improvement | Description | Effort | Status |
+|-------------|-------------|--------|--------|
+| Difficulty tiers | Easy (single digit), Medium (2x1 digit), Hard (2x2 digit) | Medium | ❌ Deferred |
+| Time limit option | Optional countdown per problem | Low | ❌ Deferred |
+| Personal best | Track best accuracy streak | Low | ✅ Exists |
+| More problems | Increase from 6 to 10 for deeper practice | Low | ✅ Session 8 |
+| Operation variety | Add division or addition modes | Medium | ❌ Deferred |
 
 ---
 
