@@ -22,7 +22,7 @@
 | Personal best tracking | Show "New personal best!" when exceeding previous best level | Low | ✅ Phase 1 |
 | Staircase progression | Use 2-up/1-down instead of 1-up/1-down (more forgiving) | Medium | ❌ Deferred |
 | Level 6 | Add 7-word level for advanced users | Low | ✅ Session 8 |
-| Digit mode | Alternative mode using digits (0-9) instead of words | Medium | ❌ Deferred |
+| Digit mode | Alternative mode using digits (0-9) instead of words | Medium | ✅ Session 9 |
 
 **Integration with Current System:**
 - Store `personalBest` in score record
