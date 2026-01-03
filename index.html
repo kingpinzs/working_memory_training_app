@@ -356,6 +356,43 @@ function getPerformanceComparison(taskKey, newValue) {
   return ` (${label} vs last)`;
 }
 
+// Persona-based encouragement messages
+function getEncouragement(isGood, isPB) {
+  const profile = profileStore.get();
+  const persona = profile?.persona || 'struggler';
+
+  if (isPB) {
+    // Personal best messages by persona
+    const pbMessages = {
+      struggler: ['Amazing progress!', 'You did it!', 'Keep building!'],
+      competitor: ['New record!', 'Crushing it!', 'Champion level!'],
+      scientist: ['Data point recorded', 'Optimal performance', 'Benchmark exceeded']
+    };
+    const msgs = pbMessages[persona] || pbMessages.struggler;
+    return msgs[Math.floor(Math.random() * msgs.length)];
+  }
+
+  if (isGood) {
+    // Good performance messages
+    const goodMessages = {
+      struggler: ['Great effort!', 'Nice work!', 'Well done!'],
+      competitor: ['Strong showing!', 'Keep pushing!', 'Challenge accepted!'],
+      scientist: ['Solid results', 'Within expected range', 'Consistent data']
+    };
+    const msgs = goodMessages[persona] || goodMessages.struggler;
+    return msgs[Math.floor(Math.random() * msgs.length)];
+  }
+
+  // Encouraging messages for lower performance
+  const encourageMessages = {
+    struggler: ['Every attempt counts!', 'Progress takes time', 'You\'re building skills'],
+    competitor: ['Next time!', 'Room to grow', 'Come back stronger'],
+    scientist: ['Variability expected', 'More data needed', 'Part of the process']
+  };
+  const msgs = encourageMessages[persona] || encourageMessages.struggler;
+  return msgs[Math.floor(Math.random() * msgs.length)];
+}
+
 // Show inline reset confirmation instead of browser confirm()
 function showResetConfirm() {
   const btn = document.getElementById('resetScores');
@@ -1472,9 +1509,11 @@ async function runSpan(doSave = true){
   if (doSave) {
     const pb = isPersonalBest('span', bestLevel);
     const cmp = getPerformanceComparison('span', bestLevel);
+    const isGood = bestLevel >= 3; // Level 3+ is good
+    const encourage = getEncouragement(isGood, pb);
     const scoreStr = `Best L${bestLevel}`;
     store.push('span',{label:'Best level', scoreStr, bestLevel, personalBest: pb});
-    toast(`WM Span · ${scoreStr}${pb ? ' 🏆 New PB!' : cmp}`);
+    toast(`WM Span · ${scoreStr}${pb ? ' 🏆 ' : cmp ? cmp + ' · ' : ' · '}${encourage}`, pb ? 'ok' : isGood ? 'info' : 'info');
   }
   return bestLevel;
 }
@@ -1517,8 +1556,10 @@ async function runSpatial(){
   }
   const pb = isPersonalBest('spatial', cleared);
   const cmp = getPerformanceComparison('spatial', cleared);
+  const isGood = cleared >= 2; // 2+ levels is good
+  const encourage = getEncouragement(isGood, pb);
   store.push('spatial',{level:level-1, cleared, scoreStr:`${cleared}/${maxLevel}`, personalBest: pb});
-  toast(`Spatial+Verbal · ${cleared}/${maxLevel}${pb ? ' 🏆 New PB!' : cmp}`);
+  toast(`Spatial+Verbal · ${cleared}/${maxLevel}${pb ? ' 🏆 ' : cmp ? cmp + ' · ' : ' · '}${encourage}`, pb ? 'ok' : isGood ? 'info' : 'info');
 }
 function spatialLevel(level, doSave = true){
   const steps = level+1; // L1=2, L2=3, L3=4
@@ -1593,8 +1634,10 @@ async function runCrossModal(){
   }
   const pb = isPersonalBest('crossmodal', cleared);
   const cmp = getPerformanceComparison('crossmodal', cleared);
+  const isGood = cleared >= 2; // 2+ levels is good
+  const encourage = getEncouragement(isGood, pb);
   store.push('crossmodal',{level:level-1, cleared, scoreStr:`${cleared}/${maxLevel}`, personalBest: pb});
-  toast(`Cross-modal · ${cleared}/${maxLevel}${pb ? ' 🏆 New PB!' : cmp}`);
+  toast(`Cross-modal · ${cleared}/${maxLevel}${pb ? ' 🏆 ' : cmp ? cmp + ' · ' : ' · '}${encourage}`, pb ? 'ok' : isGood ? 'info' : 'info');
 }
 function crossModalLevel(level){
   const steps = level+1; // L1=2, L2=3, L3=4
@@ -1706,8 +1749,11 @@ function finishNBack({b1,b2}){
   const acc2 = b2? accPct(b2.hits,b2.miss,b2.fa) : undefined;
   const pb = isPersonalBest('nback', {acc1, acc2});
   const cmp = getPerformanceComparison('nback', {acc1, acc2});
+  const bestAcc = Math.max(acc1 || 0, acc2 || 0);
+  const isGood = bestAcc >= 70; // 70%+ accuracy is good
+  const encourage = getEncouragement(isGood, pb);
   store.push('nback',{scoreStr, acc1, acc2, fa1:b1?.fa, fa2:b2?.fa, personalBest: pb});
-  toast(`N-Back · ${scoreStr}${pb ? ' 🏆 New PB!' : cmp}`);
+  toast(`N-Back · ${scoreStr}${pb ? ' 🏆 ' : cmp ? cmp + ' · ' : ' · '}${encourage}`, pb ? 'ok' : isGood ? 'info' : 'info');
 }
 function accPct(h,m,fa){ const t=h+m; return t? Math.round((h/t)*100) : 0; }
 async function blockN(n, secs=60, doSave = true){
@@ -1772,7 +1818,9 @@ async function runFilterPos(){
           const secs=((performance.now()-t0)/1000).toFixed(1); $('#t').textContent=secs;
           const accFinal = Math.round((correct/clicks)*100);
           const pb = isPersonalBest('filterPos', {acc: accFinal, time: parseFloat(secs)});
-          $('#done').innerHTML = `<span class="ok">Done:</span> ${correct}/${clicks} in <b>${secs}s</b>${pb ? ' 🏆 PB!' : ''}`;
+          const isGood = accFinal >= 80 && parseFloat(secs) <= 30; // 80%+ in under 30s is good
+          const encourage = getEncouragement(isGood, pb);
+          $('#done').innerHTML = `<span class="ok">Done:</span> ${correct}/${clicks} in <b>${secs}s</b>${pb ? ' 🏆' : ''} · ${encourage}`;
           store.push('filterPos',{scoreStr:`${correct}/${clicks} in ${secs}s`, acc:accFinal, time:parseFloat(secs), personalBest: pb});
           setTimeout(resolve, 500);
         }
@@ -1805,8 +1853,10 @@ async function runMult(){
           const acc = Math.round((correct/problems.length)*100);
           const pb = isPersonalBest('mult', acc);
           const cmp = getPerformanceComparison('mult', acc);
+          const isGood = acc >= 66; // 66%+ (4/6) is good
+          const encourage = getEncouragement(isGood, pb);
           store.push('mult',{scoreStr:`${correct}/${problems.length}`, acc, personalBest: pb});
-          toast(`Mental mult · ${correct}/${problems.length}${pb ? ' 🏆 New PB!' : cmp}`);
+          toast(`Mental mult · ${correct}/${problems.length}${pb ? ' 🏆 ' : cmp ? cmp + ' · ' : ' · '}${encourage}`, pb ? 'ok' : isGood ? 'info' : 'info');
           drawLaunchpad();
           return;
       }
