@@ -89,6 +89,9 @@
   /* Session 8: Tab transition animation */
   @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
   .tab-content-fade{animation:fadeIn .2s ease-out}
+  /* Session 8: Skip link for accessibility */
+  .skip-link{position:absolute;top:-50px;left:16px;background:var(--brand);color:#000;padding:10px 16px;border-radius:8px;font-weight:600;z-index:999;text-decoration:none;transition:top .2s}
+  .skip-link:focus{top:10px}
   /* Phase 4.2: Reduced motion support */
   @media(prefers-reduced-motion:reduce){
     *,*::before,*::after{animation-duration:0.01ms !important;animation-iteration-count:1 !important;transition-duration:0.01ms !important}
@@ -126,6 +129,7 @@
 </style>
 </head>
 <body onload="initializeApp()">
+<a href="#screen" class="skip-link">Skip to main content</a>
 <header>
   <div class="wrap flex">
     <h1>Working Memory Lab</h1>
