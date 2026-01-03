@@ -190,23 +190,23 @@ Profile contains:
 ### Bugs/Issues
 - **BrainTok tab:** ✅ FIXED - Full BrainTok with 3 micro-tasks (Phase 5)
 - **Duplicate event listeners:** ✅ FIXED - Consolidated PWA handlers (Session 9)
-- **Profile validation survey:** Logic exists but trigger condition unclear
+- **Profile validation survey:** ✅ WORKING - Triggers after 3 sessions if persona assigned
 
 ### Missing Features (from PRD)
-- **BrainTok micro-tasks:** Math Flash, Word Match, Memory Flash, Speed Sort, Pattern Complete, Odd One Out
-- **MemoryCoin economy:** Task rewards, daily goals counter
-- **Detailed transfer correlation:** Timeline overlay of wins vs. performance
+- **BrainTok micro-tasks:** ✅ IMPLEMENTED - Math Flash, Word Match, Memory Flash (Phase 5)
+- **MemoryCoin economy:** ❌ DEFERRED - Task rewards, daily goals counter
+- **Detailed transfer correlation:** ✅ IMPLEMENTED - Lifestyle correlation graphs (Phase 6)
 
 ### Missing Exercises (potential additions)
-- **Dual N-Back** - Visual + audio modality
-- **Corsi Block Tapping** - Spatial sequence recall
-- **Running Span** - Variable set sizes
-- **Operation Span** - Math verification + letter recall
+- **Dual N-Back:** ✅ IMPLEMENTED - Visual + audio modality (Phase 3)
+- **Corsi Block Tapping:** ✅ IMPLEMENTED - Spatial sequence recall (Phase 3)
+- **Running Span:** ❌ DEFERRED - Variable set sizes
+- **Operation Span:** ✅ IMPLEMENTED - Math verification + letter recall (Phase 6)
 
 ### Missing Analytics
-- **Week-over-week comparison**
-- **Personal best tracking per task**
-- **Export profile data**
+- **Week-over-week comparison:** ✅ IMPLEMENTED (Phase 4)
+- **Personal best tracking per task:** ✅ IMPLEMENTED (Phase 1)
+- **Export profile data:** ✅ IMPLEMENTED (Phase 6)
 
 ---
 
