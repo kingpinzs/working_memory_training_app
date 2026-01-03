@@ -164,6 +164,9 @@
         </label>
         <div><b>High Contrast</b> <span class="muted">accessibility</span></div>
       </div>
+      <div class="row">
+        <button id="openSettings" style="padding:6px 12px; font-size:13px">⚙️ More Settings</button>
+      </div>
       <div class="sep"></div>
       <div class="stack">
         <div class="caps tight">Assessments</div>
@@ -1774,6 +1777,117 @@ contrastToggle.onchange = ()=>{
   document.body.classList.toggle('high-contrast', p.highContrast);
   toast(`High Contrast ${p.highContrast?'ON':'OFF'}`);
 };
+
+/* ---------- Settings Panel ---------- */
+function openSettings() {
+  const p = prefs.get();
+  screen.innerHTML = `
+    <div class="stack" style="max-width:500px;margin:auto">
+      <div class="row" style="justify-content:space-between">
+        <h2 class="caps">Settings</h2>
+        <button onclick="drawLaunchpad()">← Back</button>
+      </div>
+
+      <div class="card stack">
+        <h3 class="caps tight">Exercise Options</h3>
+
+        <div class="row" title="Reduce display time for faster pace">
+          <label class="switch">
+            <input id="fastTempoToggle" type="checkbox" ${p.fastTempo ? 'checked' : ''}>
+          </label>
+          <div><b>Fast Tempo</b> <span class="muted">quicker display times</span></div>
+        </div>
+
+        <div class="row" title="Show countdown timer during recall">
+          <label class="switch">
+            <input id="timePressureToggle" type="checkbox" ${p.timePressure ? 'checked' : ''}>
+          </label>
+          <div><b>Time Pressure</b> <span class="muted">countdown during recall</span></div>
+        </div>
+      </div>
+
+      <div class="card stack">
+        <h3 class="caps tight">Display</h3>
+
+        <div class="row" title="Adaptive difficulty across tasks">
+          <label class="switch">
+            <input id="settingsCoachToggle" type="checkbox" ${p.coachMode ? 'checked' : ''}>
+          </label>
+          <div><b>Coach Mode</b> <span class="muted">adaptive session</span></div>
+        </div>
+
+        <div class="row" title="High contrast colors for accessibility">
+          <label class="switch">
+            <input id="settingsContrastToggle" type="checkbox" ${p.highContrast ? 'checked' : ''}>
+          </label>
+          <div><b>High Contrast</b> <span class="muted">accessibility</span></div>
+        </div>
+      </div>
+
+      <div class="card stack">
+        <h3 class="caps tight">Data</h3>
+        <button onclick="exportData()" style="width:fit-content">📤 Export Data</button>
+        <button onclick="confirmClearData()" style="width:fit-content; color:var(--err)">🗑️ Clear All Data</button>
+      </div>
+    </div>
+  `;
+
+  // Bind toggle handlers
+  $('#fastTempoToggle').onchange = (e) => {
+    const p = prefs.get();
+    p.fastTempo = e.target.checked;
+    prefs.set(p);
+    toast(`Fast Tempo ${p.fastTempo ? 'ON' : 'OFF'}`);
+  };
+
+  $('#timePressureToggle').onchange = (e) => {
+    const p = prefs.get();
+    p.timePressure = e.target.checked;
+    prefs.set(p);
+    toast(`Time Pressure ${p.timePressure ? 'ON' : 'OFF'}`);
+  };
+
+  $('#settingsCoachToggle').onchange = (e) => {
+    const p = prefs.get();
+    p.coachMode = e.target.checked;
+    prefs.set(p);
+    $('#coachToggle').checked = p.coachMode;
+    toast(`Coach Mode ${p.coachMode ? 'ON' : 'OFF'}`);
+  };
+
+  $('#settingsContrastToggle').onchange = (e) => {
+    const p = prefs.get();
+    p.highContrast = e.target.checked;
+    prefs.set(p);
+    $('#contrastToggle').checked = p.highContrast;
+    document.body.classList.toggle('high-contrast', p.highContrast);
+    toast(`High Contrast ${p.highContrast ? 'ON' : 'OFF'}`);
+  };
+}
+
+function confirmClearData() {
+  screen.innerHTML = `
+    <div class="stack" style="max-width:400px;margin:auto;text-align:center;padding-top:40px">
+      <div style="font-size:48px">⚠️</div>
+      <h2>Clear All Data?</h2>
+      <p class="muted">This will delete all your scores, progress, and profile. This cannot be undone.</p>
+      <div class="row" style="justify-content:center;gap:12px;margin-top:16px">
+        <button onclick="openSettings()">Cancel</button>
+        <button onclick="clearAllData()" style="background:var(--err);color:#fff">Clear Everything</button>
+      </div>
+    </div>
+  `;
+}
+
+function clearAllData() {
+  localStorage.removeItem('wmLab');
+  localStorage.removeItem('wmLabPrefs');
+  localStorage.removeItem('wmLabProfile');
+  toast('All data cleared', 'ok');
+  location.reload();
+}
+
+$('#openSettings').onclick = openSettings;
 
 /* ---------- Data (sample lists) ---------- */
 // Multiple word lists per level for variety (randomly selected each trial)
