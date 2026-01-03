@@ -80,13 +80,13 @@
 
 **Specific Improvements:**
 
-| Improvement | Description | Effort |
-|-------------|-------------|--------|
-| 3-back level | Add for advanced users (acc2 >= 80% consistently) | Medium |
-| Rolling window adaptation | Use last 3 sessions instead of just last 1 | Low |
-| Visual N-back option | Show positions instead of words (grid-based) | High |
-| Mixed modality | Alternate between emotion words and positions | High |
-| Response time tracking | Track RT for hits, analyze speed-accuracy tradeoff | Medium |
+| Improvement | Description | Effort | Status |
+|-------------|-------------|--------|--------|
+| 3-back level | Add for advanced users (acc2 >= 80% consistently) | Medium | ✅ Phase 6 |
+| Rolling window adaptation | Use last 3 sessions instead of just last 1 | Low | ✅ Phase 1 |
+| Visual N-back option | Show positions instead of words (grid-based) | High | ❌ Deferred |
+| Mixed modality | Alternate between emotion words and positions | High | ❌ Deferred |
+| Response time tracking | Track RT for hits, analyze speed-accuracy tradeoff | Medium | ✅ Phase 7 |
 
 **Adaptation Logic Enhancement:**
 ```javascript
