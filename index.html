@@ -1319,7 +1319,21 @@ window.coachOn = coachOn; // Expose for testing
 $('#coachSession').onclick = runCoachSession;
 
 /* ---------- Data (sample lists) ---------- */
-const spanLists = { 1:["Dog","Lid"], 2:["Bun","Car","Tip"], 3:["Dab","Pig","Top","Net"], 4:["Pen", "Cup", "Mat", "Sun", "Log"], 5:["Box","Hat","Key","Rug","Web","Gas"] };
+// Multiple word lists per level for variety (randomly selected each trial)
+const spanListSets = {
+  1: [["Dog","Lid"], ["Cat","Mop"], ["Sun","Pot"]],
+  2: [["Bun","Car","Tip"], ["Hat","Pin","Mud"], ["Red","Jam","Fog"]],
+  3: [["Dab","Pig","Top","Net"], ["Gum","Bat","Lip","Cot"], ["Jar","Web","Oak","Hut"]],
+  4: [["Pen","Cup","Mat","Sun","Log"], ["Tap","Fox","Rim","Bag","Dew"], ["Nut","Elk","Pod","Tin","Hem"]],
+  5: [["Box","Hat","Key","Rug","Web","Gas"], ["Mud","Fin","Orb","Zip","Cow","Jab"], ["Owl","Den","Wax","Ivy","Mob","Tar"]]
+};
+// Helper to get random word list for a level
+function getSpanWords(level) {
+  const sets = spanListSets[level];
+  return sets[Math.floor(Math.random() * sets.length)];
+}
+// Backward compatibility alias
+const spanLists = { 1: spanListSets[1][0], 2: spanListSets[2][0], 3: spanListSets[3][0], 4: spanListSets[4][0], 5: spanListSets[5][0] };
 const wordBank = {
   positive:["ecstatic","thankful","friendly","sunny","bright","inspire","safe","delight","fortunate"],
   negative:["downer","afraid","anguish","mad","guilty","coerced","dismal"],
@@ -1408,7 +1422,7 @@ async function runSpan(doSave = true){
   const levels = [1,2,3,4,5];
   let bestLevel = 0;
   for (const lv of levels){
-    const words = spanLists[lv];
+    const words = getSpanWords(lv); // Use random word list for variety
     const ok = await spanTrial(lv, words, doSave);
     if (ok){ bestLevel = lv; } else break;
   }
