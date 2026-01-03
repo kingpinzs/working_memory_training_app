@@ -81,6 +81,8 @@
   button:hover,.btn:hover{transform:translateY(-1px); box-shadow:0 4px 12px rgba(0,0,0,.3)}
   button:active,.btn:active{transform:translateY(0); box-shadow:none}
   button.primary:hover{box-shadow:0 6px 16px rgba(59,83,119,.4)}
+  button.recommended{position:relative; border-color:#2a8a5a; box-shadow:0 0 0 1px #2a8a5a inset}
+  button.recommended::after{content:'★'; position:absolute; top:-6px; right:-6px; font-size:12px; background:#2a8a5a; color:#fff; width:18px; height:18px; border-radius:50%; display:flex; align-items:center; justify-content:center; line-height:1}
   /* Phase 4.1: Task completion animation */
   @keyframes successPulse{0%{transform:scale(1)}50%{transform:scale(1.05)}100%{transform:scale(1)}}
   .task-success{animation:successPulse .4s ease-out}
@@ -1531,6 +1533,23 @@ function applyPersonalization(profile) {
   p.coachMode = profile.persona !== 'competitor'; // Competitors might prefer manual control
   prefs.set(p);
   if ($('#coachToggle')) $('#coachToggle').checked = p.coachMode;
+
+  // Highlight recommended tasks
+  updateRecommendedTasks(profile);
+}
+
+function updateRecommendedTasks(profile) {
+  // Clear existing recommendations
+  document.querySelectorAll('button.recommended').forEach(btn => {
+    btn.classList.remove('recommended');
+  });
+
+  // Add recommendations from profile
+  const recommendations = profile?.recommendations || [];
+  recommendations.forEach(taskKey => {
+    const btn = document.querySelector(`button[data-run="${taskKey}"]`);
+    if (btn) btn.classList.add('recommended');
+  });
 }
 
 function getDefaultTab(persona) {
