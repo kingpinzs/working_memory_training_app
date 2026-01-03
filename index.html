@@ -1818,6 +1818,13 @@ function openSettings() {
           </label>
           <div><b>Audio Cues</b> <span class="muted">speak colors in Cross-modal</span></div>
         </div>
+
+        <div class="row" title="30-second time limit for Filter the Positive">
+          <label class="switch">
+            <input id="countdownModeToggle" type="checkbox" ${p.countdownMode ? 'checked' : ''}>
+          </label>
+          <div><b>Countdown Mode</b> <span class="muted">30s limit for Filter</span></div>
+        </div>
       </div>
 
       <div class="card stack">
@@ -1873,6 +1880,13 @@ function openSettings() {
     p.audioCues = e.target.checked;
     prefs.set(p);
     toast(`Audio Cues ${p.audioCues ? 'ON' : 'OFF'}`);
+  };
+
+  $('#countdownModeToggle').onchange = (e) => {
+    const p = prefs.get();
+    p.countdownMode = e.target.checked;
+    prefs.set(p);
+    toast(`Countdown Mode ${p.countdownMode ? 'ON' : 'OFF'}`);
   };
 
   $('#settingsCoachToggle').onchange = (e) => {
@@ -3366,54 +3380,130 @@ async function showOpSpanRecall(letters, setSize) {
 /* ---------- 4) Filter Positive ---------- */
 async function runFilterPos(){
   const pool=[...sample(wordBank.positive,6), ...sample(wordBank.negative,5), ...sample(wordBank.neutral,5)]; shuffle(pool);
+  const totalPositive = 6; // Number of positive words in pool
+  const useCountdown = prefs.get().countdownMode;
+  const countdownTime = 30; // 30 seconds for countdown mode
+
   return new Promise(resolve=>{
+    const timerLabel = useCountdown ? `⏱️ <b id="t">${countdownTime}.0</b>s` : `Time: <b id="t">0.0</b>s`;
+    const subtitle = useCountdown
+      ? 'Find as many <b>positive</b> words as you can before time runs out!'
+      : 'Click only the <b>positive</b> words as fast/accurate as possible.';
+
     screen.innerHTML = `
       <div class="stack">
-        <h2>Filter the Positive</h2>
-        <div class="muted">Click only the <b>positive</b> words as fast/accurate as possible.</div>
-        <div class="row"><span class="timer">Time: <b id="t">0.0</b>s</span> <span>Accuracy: <b id="acc">100%</b></span></div>
+        <h2>Filter the Positive${useCountdown ? ' ⏱️' : ''}</h2>
+        <div class="muted">${subtitle}</div>
+        <div class="row"><span class="timer">${timerLabel}</span> <span>Found: <b id="found">0</b>/${totalPositive}</span></div>
         <div id="bank" class="wordBank"></div>
         <div id="done" class="muted"></div>
       </div>`;
-    const t0=performance.now(); let clicks=0, correct=0; const bank=$('#bank');
+
+    const t0=performance.now();
+    let clicks=0, correct=0, taskEnded=false;
+    const bank=$('#bank');
+
+    // Function to end the task
+    function endTask(reason) {
+      if (taskEnded) return;
+      taskEnded = true;
+
+      const secs = useCountdown
+        ? countdownTime.toFixed(1)  // Always 30s in countdown mode
+        : ((performance.now()-t0)/1000).toFixed(1);
+
+      const accFinal = clicks > 0 ? Math.round((correct/clicks)*100) : 0;
+      const foundRatio = Math.round((correct/totalPositive)*100);
+
+      // Different scoring for countdown vs normal mode
+      const scoreValue = useCountdown
+        ? { found: correct, total: totalPositive }
+        : { acc: accFinal, time: parseFloat(secs) };
+
+      const pb = isPersonalBest('filterPos', useCountdown ? scoreValue : {acc: accFinal, time: parseFloat(secs)});
+      const isGood = useCountdown
+        ? correct >= 4  // Found 4+ out of 6 is good in countdown
+        : (accFinal >= 80 && parseFloat(secs) <= 30);
+      const encourage = getEncouragement(isGood, pb);
+
+      // Calculate perfect session streak (only for normal mode)
+      const isPerfect = !useCountdown && accFinal === 100;
+      const prevScores = store.get()['filterPos'] || [];
+      let perfectStreak = 0;
+      if (isPerfect) {
+        for (let i = prevScores.length - 1; i >= 0; i--) {
+          if (prevScores[i].acc === 100) perfectStreak++;
+          else break;
+        }
+        perfectStreak++;
+      }
+      const streakText = isPerfect && perfectStreak >= 2 ? ` 🔥 ${perfectStreak} perfect streak!` : '';
+
+      const scoreStr = useCountdown
+        ? `${correct}/${totalPositive} found`
+        : `${correct}/${clicks} in ${secs}s`;
+
+      store.push('filterPos', {
+        scoreStr,
+        acc: accFinal,
+        time: useCountdown ? countdownTime : parseFloat(secs),
+        found: correct,
+        totalPositive,
+        countdownMode: useCountdown,
+        personalBest: pb,
+        perfectStreak: isPerfect ? perfectStreak : 0
+      });
+
+      const resultHtml = useCountdown
+        ? `
+          <div class="big">${correct}/${totalPositive} found${pb ? ' 🏆' : ''}</div>
+          <div class="muted" style="margin-top:8px">${foundRatio}% of positive words${reason === 'timeout' ? ' (time up!)' : ''}</div>
+          <div style="margin-top:8px">${encourage}</div>
+        `
+        : `
+          <div class="big">${correct}/${clicks} in ${secs}s${pb ? ' 🏆' : ''}</div>
+          <div class="muted" style="margin-top:8px">Accuracy: ${accFinal}%${streakText}</div>
+          <div style="margin-top:8px">${encourage}</div>
+        `;
+      showTaskComplete('Filter Positive', resultHtml, () => runFilterPos()).then(resolve);
+    }
+
     pool.forEach(w=>{
       const el=document.createElement('div'); el.className='chip'; el.textContent=w;
       el.onclick=()=>{
+        if (taskEnded) return;
         clicks++; const isPos=wordBank.positive.includes(w);
-        if (isPos){ correct++; el.classList.add('good'); } else { el.classList.add('bad'); }
-        el.style.pointerEvents='none'; const acc = Math.round((correct/clicks)*100); $('#acc').textContent = `${acc}%`;
-        if (Array.from(bank.children).every(x=> x.classList.contains('good') || !wordBank.positive.includes(x.textContent))){
-          const secs=((performance.now()-t0)/1000).toFixed(1); $('#t').textContent=secs;
-          const accFinal = Math.round((correct/clicks)*100);
-          const pb = isPersonalBest('filterPos', {acc: accFinal, time: parseFloat(secs)});
-          const isGood = accFinal >= 80 && parseFloat(secs) <= 30; // 80%+ in under 30s is good
-          const encourage = getEncouragement(isGood, pb);
-          // Calculate perfect session streak
-          const isPerfect = accFinal === 100;
-          const prevScores = store.get()['filterPos'] || [];
-          let perfectStreak = 0;
-          if (isPerfect) {
-            // Count backwards from most recent for consecutive perfect sessions
-            for (let i = prevScores.length - 1; i >= 0; i--) {
-              if (prevScores[i].acc === 100) perfectStreak++;
-              else break;
-            }
-            perfectStreak++; // Add this session
-          }
-          const streakText = isPerfect && perfectStreak >= 2 ? ` 🔥 ${perfectStreak} perfect streak!` : '';
-          store.push('filterPos',{scoreStr:`${correct}/${clicks} in ${secs}s`, acc:accFinal, time:parseFloat(secs), personalBest: pb, perfectStreak: isPerfect ? perfectStreak : 0});
+        if (isPos){ correct++; el.classList.add('good'); $('#found').textContent = correct; }
+        else { el.classList.add('bad'); }
+        el.style.pointerEvents='none';
 
-          const resultHtml = `
-            <div class="big">${correct}/${clicks} in ${secs}s${pb ? ' 🏆' : ''}</div>
-            <div class="muted" style="margin-top:8px">Accuracy: ${accFinal}%${streakText}</div>
-            <div style="margin-top:8px">${encourage}</div>
-          `;
-          showTaskComplete('Filter Positive', resultHtml, () => runFilterPos()).then(resolve);
+        // Check if all positive words found (ends task in both modes)
+        if (correct === totalPositive) {
+          endTask('complete');
         }
       };
       bank.appendChild(el);
     });
-    (function raf(){ const t=((performance.now()-t0)/1000).toFixed(1); $('#t').textContent=t; if ($('#done').textContent==='') requestAnimationFrame(raf); })();
+
+    // Timer animation
+    (function raf(){
+      if (taskEnded) return;
+      const elapsed = (performance.now()-t0)/1000;
+
+      if (useCountdown) {
+        const remaining = Math.max(0, countdownTime - elapsed);
+        $('#t').textContent = remaining.toFixed(1);
+        if (remaining <= 5) $('#t').style.color = 'var(--err)';
+        if (remaining <= 0) {
+          endTask('timeout');
+          return;
+        }
+      } else {
+        $('#t').textContent = elapsed.toFixed(1);
+      }
+
+      requestAnimationFrame(raf);
+    })();
   });
 }
 
