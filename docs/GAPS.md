@@ -96,7 +96,7 @@
 | Item | Description | Impact | Fix Effort | Status |
 |------|-------------|--------|------------|--------|
 | Section comments | Code lacks clear section delimiters | Low - navigation | 30min | ✅ Phase 1 |
-| Helper function grouping | Parsing helpers scattered | Low - organization | 1h | ❌ Deferred |
+| Helper function grouping | Parsing helpers scattered | Low - organization | 1h | ✅ Session 10 |
 | Schema versioning | No version in localStorage | Medium - future migrations | 1h | ✅ Session 9 |
 | Service worker versioning | Manual cache name update | Low - deployment friction | 30min | ✅ Phase 1 |
 
@@ -109,7 +109,7 @@
 | Item | Description | Effort | Status |
 |------|-------------|--------|--------|
 | Task completion animation | Brief celebration on success | 1h | ✅ Phase 4 |
-| Score increment animation | Count-up numbers | 2h | ❌ Deferred |
+| Score increment animation | Count-up numbers | 2h | ✅ Session 10 |
 | Button hover effects | Subtle feedback | 30min | ✅ Phase 4 |
 | Card hover effects | Slight elevation | 30min | ✅ Phase 4 |
 
@@ -118,7 +118,7 @@
 | Item | Description | Effort | Status |
 |------|-------------|--------|--------|
 | Larger touch targets | 44px minimum | 1h | ✅ Phase 1 |
-| Empty state illustrations | Better visuals for empty sections | 2h | ❌ Deferred |
+| Empty state illustrations | Better visuals for empty sections | 2h | ✅ Session 10 |
 | Performance comparison | "5% better than last time" | 2h | ✅ Phase 2 |
 | Encouragement messages | Persona-based feedback | 2h | ✅ Phase 2 |
 
@@ -150,10 +150,10 @@
 | Area | Priority | Status |
 |------|----------|--------|
 | Discovery Quiz full flow | P2 | ✅ Covered in discovery-quiz.spec.js |
-| Profile retake flow | P3 | ❌ Deferred |
-| Coach Session full flow | P2 | ❌ Deferred (long-running test) |
-| Dashboard analytics | P3 | ❌ Deferred |
-| Edge cases (quota, corruption) | P3 | ❌ Deferred |
+| Profile retake flow | P3 | ⚠️ Tests written, skipped pending debugging |
+| Coach Session full flow | P2 | ✅ Session 10 |
+| Dashboard analytics | P3 | ⚠️ Tests written, skipped pending debugging |
+| Edge cases (quota, corruption) | P3 | ✅ Session 10 |
 
 ---
 
@@ -169,9 +169,9 @@
 
 | Doc | Purpose | Priority | Status |
 |-----|---------|----------|--------|
-| User guide | How to use the app | P3 | ❌ Deferred |
-| API/function docs | Developer reference | P3 | ❌ Deferred |
-| Changelog | Version history | P3 | ❌ Deferred |
+| User guide | How to use the app | P3 | ✅ Session 10 |
+| API/function docs | Developer reference | P3 | ✅ Session 10 |
+| Changelog | Version history | P3 | ✅ Session 10 |
 
 ---
 

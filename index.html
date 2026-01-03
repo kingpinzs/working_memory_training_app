@@ -29,6 +29,8 @@
   .card{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; box-shadow:0 10px 20px rgba(0,0,0,.25)}
   h2{margin:0 0 12px 0; font-size:16px}
   .muted{color:var(--muted)}
+  .empty-state{text-align:center;padding:32px 16px}
+  .empty-state::before{content:'';display:block;width:64px;height:64px;margin:0 auto 16px;opacity:0.4;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' fill='none'%3E%3Ccircle cx='32' cy='32' r='28' stroke='%236b7a8f' stroke-width='2' stroke-dasharray='4 4'/%3E%3Cpath d='M24 32h16M32 24v16' stroke='%236b7a8f' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E")}
   .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
   button,.btn{background:var(--btn); color:var(--ink); border:1px solid var(--line); border-radius:10px; padding:10px 14px; cursor:pointer; min-height:44px; min-width:44px}
   button:hover,.btn:hover{background:var(--btn-hi)}
@@ -860,7 +862,7 @@ function renderFocusHistory() {
   const history = focusStore.get();
   const historyEl = $('#focus-history');
   if (!history.length) {
-    historyEl.innerHTML = `<p class="muted">No sessions logged yet.</p>`;
+    historyEl.innerHTML = `<div class="empty-state muted">No sessions logged yet.</div>`;
     return;
   }
   historyEl.innerHTML = history.map(s => `
@@ -1812,7 +1814,7 @@ function renderScores(){
     box.appendChild(wrap);
   });
   if (!hasScores) {
-    box.innerHTML = '<div class="muted" style="text-align:center;padding:20px 0">Complete a task to see your scores here</div>';
+    box.innerHTML = '<div class="empty-state muted">Complete a task to see your scores here</div>';
   }
 }
 renderScores();
@@ -2369,8 +2371,8 @@ async function runSpatial(){
   store.push('spatial',{level:level-1, cleared, scoreStr:`${cleared}/${maxLevel}`, verbalAcc, spatialAcc, personalBest: pb});
 
   const resultHtml = `
-    <div class="big">${cleared}/${maxLevel} levels${pb ? ' 🏆' : ''}</div>
-    <div class="muted" style="margin-top:8px">Verbal: ${verbalAcc}% · Spatial: ${spatialAcc}%</div>
+    <div class="big"><span data-animate="${cleared}">${cleared}</span>/${maxLevel} levels${pb ? ' 🏆' : ''}</div>
+    <div class="muted" style="margin-top:8px">Verbal: <span data-animate="${verbalAcc}" data-suffix="%">${verbalAcc}%</span> · Spatial: <span data-animate="${spatialAcc}" data-suffix="%">${spatialAcc}%</span></div>
     <div class="muted" style="margin-top:4px">${cmp || ''}</div>
     <div style="margin-top:8px">${encourage}</div>
   `;
@@ -2482,7 +2484,7 @@ async function runCrossModal(){
   store.push('crossmodal',{level:level-1, cleared, scoreStr:`${cleared}/${maxLevel}`, personalBest: pb});
 
   const resultHtml = `
-    <div class="big">${cleared}/${maxLevel} levels${pb ? ' 🏆' : ''}</div>
+    <div class="big"><span data-animate="${cleared}">${cleared}</span>/${maxLevel} levels${pb ? ' 🏆' : ''}</div>
     <div class="muted" style="margin-top:8px">${cmp || ''}</div>
     <div style="margin-top:8px">${encourage}</div>
   `;
@@ -2755,7 +2757,7 @@ async function runDualNBack() {
 
   const resultHtml = `
     <div class="big">${n}-back${pb ? ' 🏆' : ''}</div>
-    <div class="muted" style="margin-top:8px">Position: ${posAcc}% · Audio: ${audioAcc}%</div>
+    <div class="muted" style="margin-top:8px">Position: <span data-animate="${posAcc}" data-suffix="%">${posAcc}%</span> · Audio: <span data-animate="${audioAcc}" data-suffix="%">${audioAcc}%</span></div>
     <div style="margin-top:8px">${encourage}</div>
   `;
   await showTaskComplete('Dual N-Back', resultHtml, () => runDualNBack());
@@ -3154,8 +3156,8 @@ async function runCorsi() {
   store.push('corsi', { scoreStr, span, trialsCorrect: cleared, trialsTotal: level - 2, personalBest: pb });
 
   const resultHtml = `
-    <div class="big">${scoreStr}${pb ? ' 🏆' : ''}</div>
-    <div class="muted" style="margin-top:8px">Levels cleared: ${cleared}</div>
+    <div class="big">Span <span data-animate="${span}">${span}</span>${pb ? ' 🏆' : ''}</div>
+    <div class="muted" style="margin-top:8px">Levels cleared: <span data-animate="${cleared}">${cleared}</span></div>
     <div style="margin-top:8px">${encourage}</div>
   `;
   await showTaskComplete('Corsi Blocks', resultHtml, () => runCorsi());
@@ -3322,8 +3324,8 @@ async function runOpSpan() {
   store.push('opSpan', { scoreStr, letterAcc, mathAcc, highestSpan, personalBest: pb });
 
   const resultHtml = `
-    <div class="big">${scoreStr}${pb ? ' 🏆' : ''}</div>
-    <div class="muted" style="margin-top:8px">Highest span: ${highestSpan} letters</div>
+    <div class="big">Letters: <span data-animate="${letterAcc}" data-suffix="%">${letterAcc}%</span> · Math: <span data-animate="${mathAcc}" data-suffix="%">${mathAcc}%</span>${pb ? ' 🏆' : ''}</div>
+    <div class="muted" style="margin-top:8px">Highest span: <span data-animate="${highestSpan}">${highestSpan}</span> letters</div>
     <div style="margin-top:8px">${encourage}</div>
   `;
   await showTaskComplete('Operation Span', resultHtml, () => runOpSpan());
@@ -3676,13 +3678,13 @@ async function runFilterPos(){
 
       const resultHtml = useCountdown
         ? `
-          <div class="big">${correct}/${totalTarget} found${pb ? ' 🏆' : ''}</div>
-          <div class="muted" style="margin-top:8px">${foundRatio}% of ${targetLabel} words${reason === 'timeout' ? ' (time up!)' : ''}</div>
+          <div class="big"><span data-animate="${correct}">${correct}</span>/${totalTarget} found${pb ? ' 🏆' : ''}</div>
+          <div class="muted" style="margin-top:8px"><span data-animate="${foundRatio}" data-suffix="%">${foundRatio}%</span> of ${targetLabel} words${reason === 'timeout' ? ' (time up!)' : ''}</div>
           <div style="margin-top:8px">${encourage}</div>
         `
         : `
-          <div class="big">${correct}/${clicks} in ${secs}s${pb ? ' 🏆' : ''}</div>
-          <div class="muted" style="margin-top:8px">Accuracy: ${accFinal}%${streakText}</div>
+          <div class="big"><span data-animate="${correct}">${correct}</span>/${clicks} in ${secs}s${pb ? ' 🏆' : ''}</div>
+          <div class="muted" style="margin-top:8px">Accuracy: <span data-animate="${accFinal}" data-suffix="%">${accFinal}%</span>${streakText}</div>
           <div style="margin-top:8px">${encourage}</div>
         `;
       showTaskComplete(taskTitle, resultHtml, () => runFilterPos()).then(resolve);
@@ -3800,8 +3802,8 @@ async function runMult(){
           store.push('mult',{scoreStr:`${correct}/${problems.length}`, acc, personalBest: pb, additionMode: useAddition, difficulty});
 
           const resultHtml = `
-            <div class="big">${correct}/${problems.length}${pb ? ' 🏆' : ''}</div>
-            <div class="muted" style="margin-top:8px">Accuracy: ${acc}%</div>
+            <div class="big"><span data-animate="${correct}">${correct}</span>/${problems.length}${pb ? ' 🏆' : ''}</div>
+            <div class="muted" style="margin-top:8px">Accuracy: <span data-animate="${acc}" data-suffix="%">${acc}%</span></div>
             <div class="muted" style="margin-top:4px">${cmp || ''}</div>
             <div style="margin-top:8px">${encourage}</div>
           `;
@@ -3987,8 +3989,8 @@ function exportJson(){
   toast('Data exported to JSON', 'ok');
 }
 
+/* ---------- Parsing Helpers ---------- */
 function nv(x){ return (x===undefined||x===null)?'':x; }
-
 function parseSpanFromScore(s){ const m=/L(\d+)/i.exec(s||''); return m? +m[1] : 0; }
 function parseNAcc(s){ // fallback: compute rough acc1 from text H/M/FA
   const m=/1-back.*?(\d+)\/(\d+)\/(\d+)/i.exec(s||''); if(!m) return '';
@@ -4731,7 +4733,7 @@ function renderPWAAnalytics() {
   );
   const recentEvents = sortedEvents.slice(0, 4);
   if (recentEvents.length === 0) {
-    activityContainer.innerHTML = '<div class="muted">No activity recorded yet</div>';
+    activityContainer.innerHTML = '<div class="empty-state muted">No activity recorded yet</div>';
   } else {
     activityContainer.innerHTML = recentEvents.map(event => {
       const eventName = event.event.replace(/_/g, ' ');
@@ -5584,7 +5586,7 @@ function renderScoresPaginated(page = 1, perPage = 10) {
   const pageEntries = allEntries.slice(startIdx, endIdx);
   
   if (pageEntries.length === 0) {
-    scores.innerHTML = '<div class="muted">No scores recorded yet. Complete a task to see results here.</div>';
+    scores.innerHTML = '<div class="empty-state muted">No scores recorded yet. Complete a task to see results here.</div>';
     return;
   }
   
