@@ -313,6 +313,49 @@ function isPersonalBest(taskKey, newValue) {
   }
 }
 
+// Get performance comparison text to previous session
+function getPerformanceComparison(taskKey, newValue) {
+  const s = store.get();
+  const records = s[taskKey] || [];
+  if (records.length < 1) return ''; // No previous to compare
+
+  const prev = records[records.length - 1]; // Last session
+  let diff = 0;
+  let label = '';
+
+  switch (taskKey) {
+    case 'span':
+      diff = newValue - (prev.bestLevel || 0);
+      label = diff > 0 ? `+${diff} level` : diff < 0 ? `${diff} level` : 'same level';
+      break;
+    case 'spatial':
+    case 'crossmodal':
+      diff = newValue - (prev.cleared || 0);
+      label = diff > 0 ? `+${diff}` : diff < 0 ? `${diff}` : 'same';
+      break;
+    case 'nback':
+      // Compare acc1 or acc2 depending on what's available
+      const prevAcc = prev.acc2 ?? prev.acc1 ?? 0;
+      const newAcc = newValue.acc2 ?? newValue.acc1 ?? 0;
+      diff = newAcc - prevAcc;
+      label = diff > 0 ? `+${diff}%` : diff < 0 ? `${diff}%` : 'same';
+      break;
+    case 'filterPos':
+      diff = newValue.acc - (prev.acc || 0);
+      label = diff > 0 ? `+${diff}%` : diff < 0 ? `${diff}%` : 'same';
+      break;
+    case 'mult':
+      diff = newValue - (prev.acc || 0);
+      label = diff > 0 ? `+${diff}%` : diff < 0 ? `${diff}%` : 'same';
+      break;
+    default:
+      return '';
+  }
+
+  if (diff === 0) return '';
+  return ` (${label} vs last)`;
+}
+
 // Show inline reset confirmation instead of browser confirm()
 function showResetConfirm() {
   const btn = document.getElementById('resetScores');
@@ -1428,9 +1471,10 @@ async function runSpan(doSave = true){
   }
   if (doSave) {
     const pb = isPersonalBest('span', bestLevel);
+    const cmp = getPerformanceComparison('span', bestLevel);
     const scoreStr = `Best L${bestLevel}`;
     store.push('span',{label:'Best level', scoreStr, bestLevel, personalBest: pb});
-    toast(`WM Span · ${scoreStr}${pb ? ' 🏆 New PB!' : ''}`);
+    toast(`WM Span · ${scoreStr}${pb ? ' 🏆 New PB!' : cmp}`);
   }
   return bestLevel;
 }
@@ -1472,8 +1516,9 @@ async function runSpatial(){
     if (ok){ cleared++; level++; } else break;
   }
   const pb = isPersonalBest('spatial', cleared);
+  const cmp = getPerformanceComparison('spatial', cleared);
   store.push('spatial',{level:level-1, cleared, scoreStr:`${cleared}/${maxLevel}`, personalBest: pb});
-  toast(`Spatial+Verbal · ${cleared}/${maxLevel}${pb ? ' 🏆 New PB!' : ''}`);
+  toast(`Spatial+Verbal · ${cleared}/${maxLevel}${pb ? ' 🏆 New PB!' : cmp}`);
 }
 function spatialLevel(level, doSave = true){
   const steps = level+1; // L1=2, L2=3, L3=4
@@ -1547,8 +1592,9 @@ async function runCrossModal(){
     if (ok){ cleared++; level++; } else break;
   }
   const pb = isPersonalBest('crossmodal', cleared);
+  const cmp = getPerformanceComparison('crossmodal', cleared);
   store.push('crossmodal',{level:level-1, cleared, scoreStr:`${cleared}/${maxLevel}`, personalBest: pb});
-  toast(`Cross-modal · ${cleared}/${maxLevel}${pb ? ' 🏆 New PB!' : ''}`);
+  toast(`Cross-modal · ${cleared}/${maxLevel}${pb ? ' 🏆 New PB!' : cmp}`);
 }
 function crossModalLevel(level){
   const steps = level+1; // L1=2, L2=3, L3=4
@@ -1659,8 +1705,9 @@ function finishNBack({b1,b2}){
   const acc1 = b1? accPct(b1.hits,b1.miss,b1.fa) : undefined;
   const acc2 = b2? accPct(b2.hits,b2.miss,b2.fa) : undefined;
   const pb = isPersonalBest('nback', {acc1, acc2});
+  const cmp = getPerformanceComparison('nback', {acc1, acc2});
   store.push('nback',{scoreStr, acc1, acc2, fa1:b1?.fa, fa2:b2?.fa, personalBest: pb});
-  toast(`N-Back · ${scoreStr}${pb ? ' 🏆 New PB!' : ''}`);
+  toast(`N-Back · ${scoreStr}${pb ? ' 🏆 New PB!' : cmp}`);
 }
 function accPct(h,m,fa){ const t=h+m; return t? Math.round((h/t)*100) : 0; }
 async function blockN(n, secs=60, doSave = true){
@@ -1757,8 +1804,9 @@ async function runMult(){
       if (idx >= problems.length) {
           const acc = Math.round((correct/problems.length)*100);
           const pb = isPersonalBest('mult', acc);
+          const cmp = getPerformanceComparison('mult', acc);
           store.push('mult',{scoreStr:`${correct}/${problems.length}`, acc, personalBest: pb});
-          toast(`Mental mult · ${correct}/${problems.length}${pb ? ' 🏆 New PB!' : ''}`);
+          toast(`Mental mult · ${correct}/${problems.length}${pb ? ' 🏆 New PB!' : cmp}`);
           drawLaunchpad();
           return;
       }
