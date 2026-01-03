@@ -1617,30 +1617,32 @@ function multAnswer(expr){ const [L,R]=expr.split('x').map(Number); return L*R; 
 /* ---------- Coach Session Orchestrator ---------- */
 async function runCoachSession(){
   if (!coachOn()){ toast('Enable Coach Mode for adaptive flow'); return; }
-  toast('Coach Session: Starting warm-up...');
+  toast('Coach Session starting...');
+
+  // 1. Warm-up: Filter Positive
   await runFilterPos();
-  
-  toast('Coach Session: Core N-Back...');
+
+  // 2. Core: N-Back (adaptive)
   const lastFP = (store.get().filterPos||[]).slice(-1)[0];
   const startN = decideNFromHistory((store.get().nback||[]).slice(-1)[0]);
   const block1 = await blockN(startN, startN===1?50:60);
   const acc1 = accPct(block1.hits,block1.miss,block1.fa);
-  
-  if (startN===1 && acc1>=85 && block1.fa<=2){ 
-    toast('Strong 1-back performance! Promoting to 2-back...');
-    const block2 = await blockN(2,60); 
-    finishNBack({b1:block1,b2:block2}); 
-  } else { 
-    finishNBack(startN===1?{b1:block1}:{b2:block1}); 
+
+  if (startN===1 && acc1>=85 && block1.fa<=2){
+    toast('Promoting to 2-back!', 'ok');
+    const block2 = await blockN(2,60);
+    finishNBack({b1:block1,b2:block2});
+  } else {
+    finishNBack(startN===1?{b1:block1}:{b2:block1});
   }
-  
-  toast('Coach Session: Spatial Binding...');
+
+  // 3. Spatial Binding
   await runSpatial();
-  
-  toast('Coach Session: Mental Multiplication...');
+
+  // 4. Finisher: Mental Multiplication
   await runMult();
 
-  toast('Coach session complete!');
+  toast('Coach Session complete!', 'ok');
   drawLaunchpad();
 }
 
