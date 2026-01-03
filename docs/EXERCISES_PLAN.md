@@ -138,7 +138,7 @@ function decideNFromHistory(sessions) {
 | Improvement | Description | Effort | Status |
 |-------------|-------------|--------|--------|
 | Difficulty tiers | Easy (single digit), Medium (2x1 digit), Hard (2x2 digit) | Medium | ❌ Deferred |
-| Time limit option | Optional countdown per problem | Low | ❌ Deferred |
+| Time limit option | Optional countdown per problem | Low | ✅ Session 9 |
 | Personal best | Track best accuracy streak | Low | ✅ Exists |
 | More problems | Increase from 6 to 10 for deeper practice | Low | ✅ Session 8 |
 | Operation variety | Add division or addition modes | Medium | ❌ Deferred |

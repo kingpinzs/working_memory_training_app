@@ -2964,6 +2964,33 @@ async function corsiLevel(seqLen) {
     // Recall phase
     instDiv.textContent = 'Tap the blocks in the same order';
     let recallIdx = 0;
+    const useTimer = prefs.get().timePressure;
+    const timeLimit = 8 + (seqLen * 2); // 10-20 seconds based on sequence length
+    let timerInterval = null;
+
+    // Add timer display if Time Pressure enabled
+    if (useTimer) {
+      const timerEl = document.createElement('div');
+      timerEl.id = 'corsi-timer';
+      timerEl.className = 'muted center';
+      timerEl.style.cssText = 'font-size:1.5rem;color:var(--warn);margin-top:10px';
+      container.appendChild(timerEl);
+
+      let timeRemaining = timeLimit;
+      timerEl.textContent = `⏱️ ${timeRemaining}s`;
+      timerInterval = setInterval(() => {
+        timeRemaining--;
+        timerEl.textContent = `⏱️ ${timeRemaining}s`;
+        if (timeRemaining <= 3) timerEl.style.color = 'var(--err)';
+        if (timeRemaining <= 0) {
+          clearInterval(timerInterval);
+          cleanup();
+          feedback.textContent = "Time's up!";
+          feedback.style.color = 'var(--err)';
+          setTimeout(() => resolve(false), 800);
+        }
+      }, 1000);
+    }
 
     const handleClick = (e) => {
       const block = e.target;
@@ -2974,12 +3001,14 @@ async function corsiLevel(seqLen) {
         block.style.background = 'var(--ok)';
         recallIdx++;
         if (recallIdx === seq.length) {
+          if (timerInterval) clearInterval(timerInterval);
           cleanup();
           feedback.textContent = 'Correct!';
           feedback.style.color = 'var(--ok)';
           setTimeout(() => resolve(true), 800);
         }
       } else {
+        if (timerInterval) clearInterval(timerInterval);
         block.style.background = 'var(--err)';
         cleanup();
         feedback.textContent = 'Wrong order';
@@ -3163,6 +3192,10 @@ async function showOpSpanLetter(letter, idx, total) {
 
 async function showOpSpanRecall(letters, setSize) {
   return new Promise(resolve => {
+    const useTimer = prefs.get().timePressure;
+    const timeLimit = 10 + (setSize * 3); // 13-25 seconds based on set size
+    let timerInterval = null;
+
     const container = document.createElement('div');
     container.className = 'stack';
     container.style.textAlign = 'center';
@@ -3175,6 +3208,15 @@ async function showOpSpanRecall(letters, setSize) {
     hint.className = 'muted';
     hint.textContent = 'Click letters in the order they appeared';
     container.appendChild(hint);
+
+    // Timer display
+    let timerEl = null;
+    if (useTimer) {
+      timerEl = document.createElement('div');
+      timerEl.className = 'muted center';
+      timerEl.style.cssText = 'font-size:1.5rem;color:var(--warn);margin:10px 0';
+      container.appendChild(timerEl);
+    }
 
     const recallDisplay = document.createElement('div');
     recallDisplay.id = 'opspan-recall';
@@ -3217,6 +3259,7 @@ async function showOpSpanRecall(letters, setSize) {
     submitBtn.className = 'primary';
     submitBtn.textContent = 'Submit';
     submitBtn.onclick = () => {
+      if (timerInterval) clearInterval(timerInterval);
       let correct = 0;
       for (let i = 0; i < letters.length; i++) {
         if (recalled[i] === letters[i]) correct++;
@@ -3230,6 +3273,26 @@ async function showOpSpanRecall(letters, setSize) {
 
     screen.textContent = '';
     screen.appendChild(container);
+
+    // Start timer
+    if (useTimer) {
+      let timeRemaining = timeLimit;
+      timerEl.textContent = `⏱️ ${timeRemaining}s`;
+      timerInterval = setInterval(() => {
+        timeRemaining--;
+        timerEl.textContent = `⏱️ ${timeRemaining}s`;
+        if (timeRemaining <= 3) timerEl.style.color = 'var(--err)';
+        if (timeRemaining <= 0) {
+          clearInterval(timerInterval);
+          // Auto-submit with current selections
+          let correct = 0;
+          for (let i = 0; i < letters.length; i++) {
+            if (recalled[i] === letters[i]) correct++;
+          }
+          resolve({ correct, total: letters.length });
+        }
+      }, 1000);
+    }
 
     function updateRecallDisplay() {
       recallDisplay.innerHTML = '';
