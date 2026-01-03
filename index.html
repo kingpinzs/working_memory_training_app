@@ -1980,7 +1980,14 @@ async function runSpatial(){
   const isGood = cleared >= 2; // 2+ levels is good
   const encourage = getEncouragement(isGood, pb);
   store.push('spatial',{level:level-1, cleared, scoreStr:`${cleared}/${maxLevel}`, verbalAcc, spatialAcc, personalBest: pb});
-  toast(`Spatial+Verbal · ${cleared}/${maxLevel}${pb ? ' 🏆 ' : cmp ? cmp + ' · ' : ' · '}${encourage}`, pb ? 'ok' : isGood ? 'info' : 'info');
+
+  const resultHtml = `
+    <div class="big">${cleared}/${maxLevel} levels${pb ? ' 🏆' : ''}</div>
+    <div class="muted" style="margin-top:8px">Verbal: ${verbalAcc}% · Spatial: ${spatialAcc}%</div>
+    <div class="muted" style="margin-top:4px">${cmp || ''}</div>
+    <div style="margin-top:8px">${encourage}</div>
+  `;
+  await showTaskComplete('Spatial+Verbal', resultHtml, () => runSpatial());
 }
 function spatialLevel(level, doSave = true){
   const steps = level+1; // L1=2, L2=3, L3=4
@@ -2060,7 +2067,13 @@ async function runCrossModal(){
   const isGood = cleared >= 2; // 2+ levels is good
   const encourage = getEncouragement(isGood, pb);
   store.push('crossmodal',{level:level-1, cleared, scoreStr:`${cleared}/${maxLevel}`, personalBest: pb});
-  toast(`Cross-modal · ${cleared}/${maxLevel}${pb ? ' 🏆 ' : cmp ? cmp + ' · ' : ' · '}${encourage}`, pb ? 'ok' : isGood ? 'info' : 'info');
+
+  const resultHtml = `
+    <div class="big">${cleared}/${maxLevel} levels${pb ? ' 🏆' : ''}</div>
+    <div class="muted" style="margin-top:8px">${cmp || ''}</div>
+    <div style="margin-top:8px">${encourage}</div>
+  `;
+  await showTaskComplete('Cross-modal', resultHtml, () => runCrossModal());
 }
 function crossModalLevel(level){
   const steps = level+1; // L1=2, L2=3, L3=4
@@ -2289,8 +2302,13 @@ async function runDualNBack() {
   const encourage = getEncouragement(isGood, pb);
   const scoreStr = n + '-back: Pos ' + posAcc + '% / Audio ' + audioAcc + '%';
   store.push('dualNback', { scoreStr, n, posHits: result.posHits, posMiss: result.posMiss, posFA: result.posFA, audioHits: result.audioHits, audioMiss: result.audioMiss, audioFA: result.audioFA, posAcc, audioAcc, personalBest: pb });
-  toast('Dual N-Back · ' + scoreStr + (pb ? ' 🏆 ' : ' · ') + encourage, pb ? 'ok' : isGood ? 'info' : 'info');
-  drawLaunchpad();
+
+  const resultHtml = `
+    <div class="big">${n}-back${pb ? ' 🏆' : ''}</div>
+    <div class="muted" style="margin-top:8px">Position: ${posAcc}% · Audio: ${audioAcc}%</div>
+    <div style="margin-top:8px">${encourage}</div>
+  `;
+  await showTaskComplete('Dual N-Back', resultHtml, () => runDualNBack());
 }
 
 async function dualNBackBlock(n, secs) {
@@ -2487,17 +2505,17 @@ async function runAudioNBack() {
     // Auto-promotion logic
     if (startN === 1 && acc >= 85 && b.fa <= 2) {
       const b2 = await audioNBackBlock(2, 50);
-      finishAudioNBack({b1: b, b2});
+      await finishAudioNBack({b1: b, b2});
     } else if (startN === 2 && acc >= 80 && b.fa <= 3) {
       const b3 = await audioNBackBlock(3, 60);
-      finishAudioNBack({b2: b, b3});
+      await finishAudioNBack({b2: b, b3});
     } else {
-      finishAudioNBack(startN === 1 ? {b1: b} : startN === 2 ? {b2: b} : {b3: b});
+      await finishAudioNBack(startN === 1 ? {b1: b} : startN === 2 ? {b2: b} : {b3: b});
     }
   } else {
     const b1 = await audioNBackBlock(1, 35);
     const b2 = await audioNBackBlock(2, 45);
-    finishAudioNBack({b1, b2});
+    await finishAudioNBack({b1, b2});
   }
 }
 
@@ -2526,7 +2544,7 @@ function decideAudioNFromHistory(sessions) {
   return 1;
 }
 
-function finishAudioNBack({b1, b2, b3}) {
+async function finishAudioNBack({b1, b2, b3}) {
   let parts = [];
   if (b1) parts.push(`1-back H/M/FA ${b1.hits}/${b1.miss}/${b1.fa}`);
   if (b2) parts.push(`2-back ${b2.hits}/${b2.miss}/${b2.fa}`);
@@ -2545,7 +2563,14 @@ function finishAudioNBack({b1, b2, b3}) {
   const encourage = getEncouragement(isGood, pb);
   store.push('audioNback', {scoreStr, acc1, acc2, acc3, fa1: b1?.fa, fa2: b2?.fa, fa3: b3?.fa, avgRt, personalBest: pb});
   const rtStr = avgRt ? ` (${avgRt}ms avg)` : '';
-  toast(`Audio N-Back · ${scoreStr}${rtStr}${pb ? ' 🏆 ' : cmp ? cmp + ' · ' : ' · '}${encourage}`, pb ? 'ok' : isGood ? 'info' : 'info');
+
+  const resultHtml = `
+    <div class="big">${scoreStr}${pb ? ' 🏆' : ''}</div>
+    ${rtStr ? `<div class="muted" style="margin-top:4px">Avg RT: ${avgRt}ms</div>` : ''}
+    <div class="muted" style="margin-top:8px">${cmp || ''}</div>
+    <div style="margin-top:8px">${encourage}</div>
+  `;
+  await showTaskComplete('Audio N-Back', resultHtml, () => runAudioNBack());
 }
 
 async function audioNBackBlock(n, trials) {
@@ -2675,8 +2700,13 @@ async function runCorsi() {
   const scoreStr = 'Span ' + span;
 
   store.push('corsi', { scoreStr, span, trialsCorrect: cleared, trialsTotal: level - 2, personalBest: pb });
-  toast('Corsi Blocks · ' + scoreStr + (pb ? ' 🏆 ' : ' · ') + encourage, pb ? 'ok' : isGood ? 'info' : 'info');
-  drawLaunchpad();
+
+  const resultHtml = `
+    <div class="big">${scoreStr}${pb ? ' 🏆' : ''}</div>
+    <div class="muted" style="margin-top:8px">Levels cleared: ${cleared}</div>
+    <div style="margin-top:8px">${encourage}</div>
+  `;
+  await showTaskComplete('Corsi Blocks', resultHtml, () => runCorsi());
 }
 
 async function corsiLevel(seqLen) {
@@ -2809,8 +2839,13 @@ async function runOpSpan() {
 
   const scoreStr = `Letters: ${letterAcc}% • Math: ${mathAcc}%`;
   store.push('opSpan', { scoreStr, letterAcc, mathAcc, highestSpan, personalBest: pb });
-  toast('Operation Span · ' + scoreStr + (pb ? ' 🏆 ' : ' · ') + encourage, pb ? 'ok' : isGood ? 'info' : 'warn');
-  drawLaunchpad();
+
+  const resultHtml = `
+    <div class="big">${scoreStr}${pb ? ' 🏆' : ''}</div>
+    <div class="muted" style="margin-top:8px">Highest span: ${highestSpan} letters</div>
+    <div style="margin-top:8px">${encourage}</div>
+  `;
+  await showTaskComplete('Operation Span', resultHtml, () => runOpSpan());
 }
 
 async function opSpanTrial(setSize) {
@@ -3051,9 +3086,14 @@ async function runFilterPos(){
             perfectStreak++; // Add this session
           }
           const streakText = isPerfect && perfectStreak >= 2 ? ` 🔥 ${perfectStreak} perfect streak!` : '';
-          $('#done').innerHTML = `<span class="ok">Done:</span> ${correct}/${clicks} in <b>${secs}s</b>${pb ? ' 🏆' : ''}${streakText} · ${encourage}`;
           store.push('filterPos',{scoreStr:`${correct}/${clicks} in ${secs}s`, acc:accFinal, time:parseFloat(secs), personalBest: pb, perfectStreak: isPerfect ? perfectStreak : 0});
-          setTimeout(resolve, 500);
+
+          const resultHtml = `
+            <div class="big">${correct}/${clicks} in ${secs}s${pb ? ' 🏆' : ''}</div>
+            <div class="muted" style="margin-top:8px">Accuracy: ${accFinal}%${streakText}</div>
+            <div style="margin-top:8px">${encourage}</div>
+          `;
+          showTaskComplete('Filter Positive', resultHtml, () => runFilterPos()).then(resolve);
         }
       };
       bank.appendChild(el);
@@ -3080,7 +3120,7 @@ async function runMult(){
     </div>`;
   const q=$('#q'), f=$('#f'), a=$('#a'), res=$('#res');
   
-  function show(){
+  async function show(){
       if (idx >= problems.length) {
           const acc = Math.round((correct/problems.length)*100);
           const pb = isPersonalBest('mult', acc);
@@ -3088,12 +3128,18 @@ async function runMult(){
           const isGood = acc >= 70; // 70%+ (7/10) is good
           const encourage = getEncouragement(isGood, pb);
           store.push('mult',{scoreStr:`${correct}/${problems.length}`, acc, personalBest: pb});
-          toast(`Mental mult · ${correct}/${problems.length}${pb ? ' 🏆 ' : cmp ? cmp + ' · ' : ' · '}${encourage}`, pb ? 'ok' : isGood ? 'info' : 'info');
-          drawLaunchpad();
+
+          const resultHtml = `
+            <div class="big">${correct}/${problems.length}${pb ? ' 🏆' : ''}</div>
+            <div class="muted" style="margin-top:8px">Accuracy: ${acc}%</div>
+            <div class="muted" style="margin-top:4px">${cmp || ''}</div>
+            <div style="margin-top:8px">${encourage}</div>
+          `;
+          await showTaskComplete('Mental Mult', resultHtml, () => runMult());
           return;
       }
-      q.textContent = problems[idx].replace('x',' × '); 
-      a.focus(); 
+      q.textContent = problems[idx].replace('x',' × ');
+      a.focus();
   }
 
   show();
