@@ -1854,6 +1854,17 @@ function openSettings() {
             </div>
           </div>
         </div>
+
+        <div class="row" title="Choose word count for Filter task">
+          <div style="flex:1">
+            <div><b>Filter Size</b></div>
+            <div id="filterSizeBtns" style="display:flex;gap:6px;margin-top:6px">
+              <button class="chip ${p.filterSize==='small'?'good':''}" data-size="small" style="padding:6px 10px;font-size:0.85rem">Small (12)</button>
+              <button class="chip ${(p.filterSize||'medium')==='medium'?'good':''}" data-size="medium" style="padding:6px 10px;font-size:0.85rem">Medium (16)</button>
+              <button class="chip ${p.filterSize==='large'?'good':''}" data-size="large" style="padding:6px 10px;font-size:0.85rem">Large (24)</button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="card stack">
@@ -1954,6 +1965,22 @@ function openSettings() {
       });
       const catNames = { positive: 'Positive', calm: 'Calm', strong: 'Strong' };
       toast(`Filter: ${catNames[cat]}`);
+    };
+  });
+
+  // Filter size button handlers
+  document.querySelectorAll('#filterSizeBtns button').forEach(btn => {
+    btn.onclick = () => {
+      const size = btn.dataset.size;
+      const p = prefs.get();
+      p.filterSize = size;
+      prefs.set(p);
+      // Update button states
+      document.querySelectorAll('#filterSizeBtns button').forEach(b => {
+        b.classList.toggle('good', b.dataset.size === size);
+      });
+      const sizeNames = { small: 'Small (12)', medium: 'Medium (16)', large: 'Large (24)' };
+      toast(`Filter: ${sizeNames[size]}`);
     };
   });
 
@@ -3456,9 +3483,19 @@ async function showOpSpanRecall(letters, setSize) {
 
 /* ---------- 4) Filter Task (Positive/Calm/Strong) ---------- */
 async function runFilterPos(){
-  const category = prefs.get().filterCategory || 'positive';
-  const useCountdown = prefs.get().countdownMode;
+  const p = prefs.get();
+  const category = p.filterCategory || 'positive';
+  const useCountdown = p.countdownMode;
   const countdownTime = 30;
+  const filterSize = p.filterSize || 'medium';
+
+  // Determine word counts based on filter size
+  const sizeCounts = {
+    small: { target: 4, distractor: 8 },    // 12 total
+    medium: { target: 6, distractor: 10 },  // 16 total
+    large: { target: 8, distractor: 16 }    // 24 total
+  };
+  const counts = sizeCounts[filterSize] || sizeCounts.medium;
 
   // Select word bank based on category
   let targetWords, distractorWords, taskTitle, targetLabel;
@@ -3479,8 +3516,8 @@ async function runFilterPos(){
     targetLabel = 'positive';
   }
 
-  const totalTarget = 6;
-  const pool = [...sample(targetWords, totalTarget), ...sample(distractorWords, 10)];
+  const totalTarget = counts.target;
+  const pool = [...sample(targetWords, totalTarget), ...sample(distractorWords, counts.distractor)];
   shuffle(pool);
 
   return new Promise(resolve=>{
@@ -3521,7 +3558,7 @@ async function runFilterPos(){
 
       const pb = isPersonalBest('filterPos', useCountdown ? scoreValue : {acc: accFinal, time: parseFloat(secs)});
       const isGood = useCountdown
-        ? correct >= 4  // Found 4+ out of 6 is good in countdown
+        ? correct >= Math.ceil(totalTarget * 0.65)  // Found 65%+ is good in countdown
         : (accFinal >= 80 && parseFloat(secs) <= 30);
       const encourage = getEncouragement(isGood, pb);
 
@@ -3549,6 +3586,7 @@ async function runFilterPos(){
         found: correct,
         totalTarget,
         category,
+        filterSize,
         countdownMode: useCountdown,
         personalBest: pb,
         perfectStreak: isPerfect ? perfectStreak : 0
