@@ -86,6 +86,9 @@
   /* Phase 4.1: Task completion animation */
   @keyframes successPulse{0%{transform:scale(1)}50%{transform:scale(1.05)}100%{transform:scale(1)}}
   .task-success{animation:successPulse .4s ease-out}
+  /* Session 8: Tab transition animation */
+  @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  .tab-content-fade{animation:fadeIn .2s ease-out}
   /* Phase 4.2: Reduced motion support */
   @media(prefers-reduced-motion:reduce){
     *,*::before,*::after{animation-duration:0.01ms !important;animation-iteration-count:1 !important;transition-duration:0.01ms !important}
@@ -526,6 +529,10 @@ document.querySelectorAll('[role="tab"]').forEach(tab=>{
     document.querySelectorAll('[role="tab"]').forEach(t=>t.setAttribute('aria-selected','false'));
     tab.setAttribute('aria-selected','true');
     const t = tab.dataset.tab;
+    // Add fade animation to tab content
+    screen.classList.remove('tab-content-fade');
+    void screen.offsetWidth; // Trigger reflow for animation restart
+    screen.classList.add('tab-content-fade');
     if (t==='launchpad') drawLaunchpad();
     if (t==='dashboard') drawDashboard();
     if (t==='focus') drawFocus();
