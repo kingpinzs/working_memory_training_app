@@ -220,22 +220,22 @@ document.onkeydown = (e) => {
 
 ### Per-Session Metrics
 
-| Metric | Current | Proposed |
-|--------|---------|----------|
-| Accuracy | Yes | Yes |
-| False Alarms | Yes (N-Back only) | Yes (all tasks) |
-| Response Time | No | Add for N-Back |
-| Time to Complete | Yes (Filter) | Add for all |
-| Personal Best | No | Add for all |
+| Metric | Current | Proposed | Status |
+|--------|---------|----------|--------|
+| Accuracy | Yes | Yes | ✅ Exists |
+| False Alarms | Yes (N-Back only) | Yes (all tasks) | ✅ Phase 7 |
+| Response Time | No | Add for N-Back | ✅ Phase 7 |
+| Time to Complete | Yes (Filter) | Add for all | ❌ Deferred |
+| Personal Best | No | Add for all | ✅ Phase 1 |
 
 ### Cross-Session Metrics
 
-| Metric | Current | Proposed |
-|--------|---------|----------|
-| Domain Scores | Yes | Keep |
-| Streak | Yes | Keep |
-| Improvement Trend | Yes (baseline vs current) | Add week-over-week |
-| Session Count | Indirect | Add explicit tracking |
+| Metric | Current | Proposed | Status |
+|--------|---------|----------|--------|
+| Domain Scores | Yes | Keep | ✅ Exists |
+| Streak | Yes | Keep | ✅ Exists |
+| Improvement Trend | Yes (baseline vs current) | Add week-over-week | ✅ Phase 4 |
+| Session Count | Indirect | Add explicit tracking | ✅ Exists |
 
 ### Proposed Schema Additions
 
