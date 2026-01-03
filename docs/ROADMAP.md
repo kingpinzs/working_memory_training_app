@@ -141,12 +141,13 @@ This roadmap builds on the existing Working Memory Lab application. Each phase i
 - ✅ Word Match micro-task (category matching)
 - ✅ Progress dots, feedback animations, scoring
 
-### Phase 6: Advanced Features
+### Phase 6: Advanced Features ✅ COMPLETE
 **Estimated Effort:** 10-15 hours
-- Operation Span task
-- 3-back N-Back level
-- Lifestyle correlation graphs
-- Export data to JSON
+**Status:** ✅ COMPLETE (January 2, 2026)
+- ✅ Operation Span task (math verification + letter recall)
+- ✅ 3-back N-Back level (adaptive promotion from 2-back)
+- ✅ Lifestyle correlation graphs (visual bar chart)
+- ✅ Export data to JSON (full backup with all stores)
 
 ### Phase 7: Extended Polish
 **Estimated Effort:** 8-10 hours

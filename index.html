@@ -149,6 +149,7 @@
           <button data-run="nback" aria-label="Start N-Back emotion task">1-Back / 2-Back (emotion)</button>
           <button data-run="dualNback" aria-label="Start Dual N-Back task">Dual N-Back</button>
           <button data-run="corsi" aria-label="Start Corsi Block-Tapping task">Corsi Blocks</button>
+          <button data-run="opSpan" aria-label="Start Operation Span task">Operation Span</button>
         </div>
         <div class="caps tight">Drills</div>
         <div class="split" role="group" aria-label="Cognitive drills">
@@ -166,8 +167,9 @@
       <h2 class="caps">Scoreboard</h2>
       <div id="scores" class="stack" role="region" aria-label="Recent scores and achievements"></div>
       <div class="sep"></div>
-      <div class="row">
+      <div class="row" style="flex-wrap:wrap">
         <button id="exportCsv" aria-label="Export scores as CSV file">Export CSV</button>
+        <button id="exportJson" aria-label="Export all data as JSON file">Export JSON</button>
         <button id="resetScores" aria-label="Reset all scores - this action cannot be undone">Reset scores</button>
       </div>
     </div>
@@ -489,6 +491,7 @@ const prefs = {
 
 $('#resetScores').onclick = showResetConfirm;
 $('#exportCsv').onclick = exportCsv;
+$('#exportJson').onclick = exportJson;
 
 /* ---------- Tabs ---------- */
 document.querySelectorAll('[role="tab"]').forEach(tab=>{
@@ -1727,6 +1730,7 @@ function runTask(mode) {
   if (mode==='nback') runNBack();
   if (mode==='dualNback') runDualNBack();
   if (mode==='corsi') runCorsi();
+  if (mode==='opSpan') runOpSpan();
   if (mode==='filterPos') runFilterPos();
   if (mode==='mult') runMult();
 }
@@ -2003,19 +2007,24 @@ async function runNBack(opts={}, doSave = true){
   if (adaptive){
     const nbackHistory = store.get().nback || [];
     const startN = decideNFromHistory(nbackHistory);
-    const b = await blockN(startN, startN===1?50:60, doSave);
+    const trials = startN === 1 ? 50 : startN === 2 ? 60 : 70;
+    const b = await blockN(startN, trials, doSave);
     const acc = accPct(b.hits,b.miss,b.fa);
-    // If strong performance at 1-back, auto add a 2-back block
-    if (startN===1 && acc>=85 && b.fa<=2){
-      const b2 = await blockN(2,60, doSave);
+
+    // Auto-promotion logic
+    if (startN === 1 && acc >= 85 && b.fa <= 2){
+      const b2 = await blockN(2, 60, doSave);
       if (doSave) finishNBack({b1:b, b2});
+    } else if (startN === 2 && acc >= 80 && b.fa <= 3){
+      const b3 = await blockN(3, 70, doSave);
+      if (doSave) finishNBack({b2:b, b3});
     } else {
-      if (doSave) finishNBack(startN===1?{b1:b}:{b2:b});
+      if (doSave) finishNBack(startN === 1 ? {b1:b} : startN === 2 ? {b2:b} : {b3:b});
     }
   } else {
-    const b1 = await blockN(1,45, doSave);
-    const b2 = await blockN(2,60, doSave);
-    if (doSave) finishNBack({b1,b2});
+    const b1 = await blockN(1, 45, doSave);
+    const b2 = await blockN(2, 60, doSave);
+    if (doSave) finishNBack({b1, b2});
   }
 }
 function decideNFromHistory(sessions){
@@ -2028,34 +2037,45 @@ function decideNFromHistory(sessions){
   const recent = arr.slice(-3);
 
   // Calculate rolling averages
+  let acc3Sum = 0, acc3Count = 0;
   let acc2Sum = 0, acc2Count = 0;
   let acc1Sum = 0, acc1Count = 0;
 
   recent.forEach(s => {
+    const a3 = Number.isFinite(s.acc3) ? s.acc3 : 0;
     const a2 = Number.isFinite(s.acc2) ? s.acc2 : 0;
     const a1 = Number.isFinite(s.acc1) ? s.acc1 : parseNAcc(s.scoreStr);
+    if (s.acc3 !== undefined) { acc3Sum += a3; acc3Count++; }
     if (s.acc2 !== undefined) { acc2Sum += a2; acc2Count++; }
     if (s.acc1 !== undefined || a1 > 0) { acc1Sum += a1; acc1Count++; }
   });
 
+  const avgAcc3 = acc3Count > 0 ? acc3Sum / acc3Count : 0;
   const avgAcc2 = acc2Count > 0 ? acc2Sum / acc2Count : 0;
   const avgAcc1 = acc1Count > 0 ? acc1Sum / acc1Count : 0;
 
   // Decision logic with rolling averages
+  if (avgAcc3 >= 70) return 3;  // Consistently decent at 3-back
+  if (avgAcc2 >= 80 && acc2Count >= 3) return 3;  // Ready for 3-back
   if (avgAcc2 >= 75) return 2;  // Consistently good at 2-back
   if (avgAcc1 >= 85) return 2;  // Ready to try 2-back
   return 1;
 }
-function finishNBack({b1,b2}){
-  const scoreStr = `${b1?`1-back H/M/FA ${b1.hits}/${b1.miss}/${b1.fa}`:''}${b1&&b2?' · ':''}${b2?`2-back ${b2.hits}/${b2.miss}/${b2.fa}`:''}`;
+function finishNBack({b1,b2,b3}){
+  let parts = [];
+  if (b1) parts.push(`1-back H/M/FA ${b1.hits}/${b1.miss}/${b1.fa}`);
+  if (b2) parts.push(`2-back ${b2.hits}/${b2.miss}/${b2.fa}`);
+  if (b3) parts.push(`3-back ${b3.hits}/${b3.miss}/${b3.fa}`);
+  const scoreStr = parts.join(' · ');
   const acc1 = b1? accPct(b1.hits,b1.miss,b1.fa) : undefined;
   const acc2 = b2? accPct(b2.hits,b2.miss,b2.fa) : undefined;
-  const pb = isPersonalBest('nback', {acc1, acc2});
-  const cmp = getPerformanceComparison('nback', {acc1, acc2});
-  const bestAcc = Math.max(acc1 || 0, acc2 || 0);
+  const acc3 = b3? accPct(b3.hits,b3.miss,b3.fa) : undefined;
+  const pb = isPersonalBest('nback', {acc1, acc2, acc3});
+  const cmp = getPerformanceComparison('nback', {acc1, acc2, acc3});
+  const bestAcc = Math.max(acc1 || 0, acc2 || 0, acc3 || 0);
   const isGood = bestAcc >= 70; // 70%+ accuracy is good
   const encourage = getEncouragement(isGood, pb);
-  store.push('nback',{scoreStr, acc1, acc2, fa1:b1?.fa, fa2:b2?.fa, personalBest: pb});
+  store.push('nback',{scoreStr, acc1, acc2, acc3, fa1:b1?.fa, fa2:b2?.fa, fa3:b3?.fa, personalBest: pb});
   toast(`N-Back · ${scoreStr}${pb ? ' 🏆 ' : cmp ? cmp + ' · ' : ' · '}${encourage}`, pb ? 'ok' : isGood ? 'info' : 'info');
 }
 function accPct(h,m,fa){ const t=h+m; return t? Math.round((h/t)*100) : 0; }
@@ -2413,6 +2433,248 @@ async function corsiLevel(seqLen) {
   });
 }
 
+/* ---------- Operation Span Task ---------- */
+const opSpanLetters = ['F', 'H', 'J', 'K', 'L', 'N', 'P', 'Q', 'R', 'S', 'T', 'Y'];
+
+function generateOpSpanMath() {
+  const a = Math.floor(Math.random() * 9) + 2;
+  const b = Math.floor(Math.random() * 9) + 2;
+  const op = Math.random() > 0.5 ? '+' : '-';
+  const correct = op === '+' ? a + b : a - b;
+  const isRight = Math.random() > 0.4;
+  const shown = isRight ? correct : correct + (Math.random() > 0.5 ? Math.floor(Math.random() * 4) + 1 : -Math.floor(Math.random() * 4) - 1);
+  return { eq: `${a} ${op} ${b} = ${shown}`, isCorrect: isRight };
+}
+
+async function runOpSpan() {
+  const levels = [2, 3, 4, 5];
+  let totalLettersCorrect = 0;
+  let totalLetters = 0;
+  let totalMathCorrect = 0;
+  let totalMath = 0;
+  let highestSpan = 0;
+
+  for (const setSize of levels) {
+    const result = await opSpanTrial(setSize);
+    totalMathCorrect += result.mathCorrect;
+    totalMath += result.mathTotal;
+    totalLettersCorrect += result.lettersCorrect;
+    totalLetters += result.lettersTotal;
+    if (result.lettersCorrect === result.lettersTotal) highestSpan = setSize;
+  }
+
+  const letterAcc = Math.round((totalLettersCorrect / totalLetters) * 100);
+  const mathAcc = Math.round((totalMathCorrect / totalMath) * 100);
+  const pb = isPersonalBest('opSpan', letterAcc);
+  const isGood = letterAcc >= 70 && mathAcc >= 80;
+  const encourage = getEncouragement(isGood, pb);
+
+  const scoreStr = `Letters: ${letterAcc}% • Math: ${mathAcc}%`;
+  store.push('opSpan', { scoreStr, letterAcc, mathAcc, highestSpan, personalBest: pb });
+  toast('Operation Span · ' + scoreStr + (pb ? ' 🏆 ' : ' · ') + encourage, pb ? 'ok' : isGood ? 'info' : 'warn');
+  drawLaunchpad();
+}
+
+async function opSpanTrial(setSize) {
+  const letters = [];
+  const mathResults = [];
+  const usedLetters = new Set();
+
+  for (let i = 0; i < setSize; i++) {
+    let letter;
+    do { letter = opSpanLetters[Math.floor(Math.random() * opSpanLetters.length)]; } while (usedLetters.has(letter));
+    usedLetters.add(letter);
+    letters.push(letter);
+  }
+
+  return new Promise(async resolve => {
+    for (let i = 0; i < setSize; i++) {
+      const math = generateOpSpanMath();
+      const mathResult = await showOpSpanMath(math, i + 1, setSize);
+      mathResults.push(mathResult);
+      await showOpSpanLetter(letters[i], i + 1, setSize);
+    }
+
+    const recallResult = await showOpSpanRecall(letters, setSize);
+
+    resolve({
+      mathCorrect: mathResults.filter(r => r).length,
+      mathTotal: setSize,
+      lettersCorrect: recallResult.correct,
+      lettersTotal: setSize
+    });
+  });
+}
+
+async function showOpSpanMath(math, idx, total) {
+  return new Promise(resolve => {
+    const container = document.createElement('div');
+    container.className = 'stack';
+    container.style.textAlign = 'center';
+
+    const title = document.createElement('h2');
+    title.textContent = `Operation Span – Set of ${total}`;
+    container.appendChild(title);
+
+    const progress = document.createElement('div');
+    progress.className = 'muted';
+    progress.textContent = `Math ${idx}/${total}`;
+    container.appendChild(progress);
+
+    const eq = document.createElement('div');
+    eq.className = 'big';
+    eq.style.fontSize = '32px';
+    eq.style.margin = '40px 0';
+    eq.textContent = math.eq;
+    container.appendChild(eq);
+
+    const hint = document.createElement('div');
+    hint.className = 'muted';
+    hint.textContent = 'Is this equation correct?';
+    container.appendChild(hint);
+
+    const buttons = document.createElement('div');
+    buttons.className = 'row';
+    buttons.style.justifyContent = 'center';
+    buttons.style.gap = '16px';
+    buttons.style.marginTop = '24px';
+
+    const yesBtn = document.createElement('button');
+    yesBtn.className = 'primary';
+    yesBtn.style.minWidth = '100px';
+    yesBtn.textContent = '✓ Yes';
+    yesBtn.onclick = () => { cleanup(); resolve(math.isCorrect === true); };
+
+    const noBtn = document.createElement('button');
+    noBtn.style.minWidth = '100px';
+    noBtn.textContent = '✗ No';
+    noBtn.onclick = () => { cleanup(); resolve(math.isCorrect === false); };
+
+    buttons.appendChild(yesBtn);
+    buttons.appendChild(noBtn);
+    container.appendChild(buttons);
+
+    screen.textContent = '';
+    screen.appendChild(container);
+
+    let timeout = setTimeout(() => { cleanup(); resolve(false); }, 5000);
+
+    function cleanup() {
+      clearTimeout(timeout);
+    }
+  });
+}
+
+async function showOpSpanLetter(letter, idx, total) {
+  return new Promise(resolve => {
+    const container = document.createElement('div');
+    container.className = 'stack';
+    container.style.textAlign = 'center';
+
+    const title = document.createElement('h2');
+    title.textContent = `Operation Span – Set of ${total}`;
+    container.appendChild(title);
+
+    const progress = document.createElement('div');
+    progress.className = 'muted';
+    progress.textContent = `Letter ${idx}/${total} – Remember this!`;
+    container.appendChild(progress);
+
+    const letterDiv = document.createElement('div');
+    letterDiv.className = 'letterBubble';
+    letterDiv.style.cssText = 'margin:40px auto;width:80px;height:80px;font-size:40px;background:var(--brand);color:#fff';
+    letterDiv.textContent = letter;
+    container.appendChild(letterDiv);
+
+    screen.textContent = '';
+    screen.appendChild(container);
+
+    setTimeout(resolve, 1500);
+  });
+}
+
+async function showOpSpanRecall(letters, setSize) {
+  return new Promise(resolve => {
+    const container = document.createElement('div');
+    container.className = 'stack';
+    container.style.textAlign = 'center';
+
+    const title = document.createElement('h2');
+    title.textContent = 'Recall the Letters';
+    container.appendChild(title);
+
+    const hint = document.createElement('div');
+    hint.className = 'muted';
+    hint.textContent = 'Click letters in the order they appeared';
+    container.appendChild(hint);
+
+    const recallDisplay = document.createElement('div');
+    recallDisplay.id = 'opspan-recall';
+    recallDisplay.style.cssText = 'display:flex;gap:8px;justify-content:center;min-height:50px;margin:20px 0;flex-wrap:wrap';
+    container.appendChild(recallDisplay);
+
+    const grid = document.createElement('div');
+    grid.style.cssText = 'display:grid;grid-template-columns:repeat(4,60px);gap:8px;justify-content:center;margin:20px 0';
+
+    const recalled = [];
+    opSpanLetters.forEach(l => {
+      const btn = document.createElement('button');
+      btn.style.cssText = 'width:60px;height:60px;font-size:24px;font-weight:700';
+      btn.textContent = l;
+      btn.onclick = () => {
+        if (recalled.length >= setSize) return;
+        recalled.push(l);
+        btn.disabled = true;
+        btn.style.opacity = '0.3';
+        updateRecallDisplay();
+      };
+      grid.appendChild(btn);
+    });
+    container.appendChild(grid);
+
+    const actionRow = document.createElement('div');
+    actionRow.className = 'row';
+    actionRow.style.justifyContent = 'center';
+    actionRow.style.gap = '12px';
+
+    const clearBtn = document.createElement('button');
+    clearBtn.textContent = 'Clear';
+    clearBtn.onclick = () => {
+      recalled.length = 0;
+      grid.querySelectorAll('button').forEach(b => { b.disabled = false; b.style.opacity = '1'; });
+      updateRecallDisplay();
+    };
+
+    const submitBtn = document.createElement('button');
+    submitBtn.className = 'primary';
+    submitBtn.textContent = 'Submit';
+    submitBtn.onclick = () => {
+      let correct = 0;
+      for (let i = 0; i < letters.length; i++) {
+        if (recalled[i] === letters[i]) correct++;
+      }
+      resolve({ correct, total: letters.length });
+    };
+
+    actionRow.appendChild(clearBtn);
+    actionRow.appendChild(submitBtn);
+    container.appendChild(actionRow);
+
+    screen.textContent = '';
+    screen.appendChild(container);
+
+    function updateRecallDisplay() {
+      recallDisplay.innerHTML = '';
+      recalled.forEach(l => {
+        const chip = document.createElement('span');
+        chip.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;background:var(--brand);color:#fff;border-radius:8px;font-weight:700';
+        chip.textContent = l;
+        recallDisplay.appendChild(chip);
+      });
+    }
+  });
+}
+
 /* ---------- 4) Filter Positive ---------- */
 async function runFilterPos(){
   const pool=[...sample(wordBank.positive,6), ...sample(wordBank.negative,5), ...sample(wordBank.neutral,5)]; shuffle(pool);
@@ -2542,6 +2804,32 @@ function exportCsv(){
   const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'}); const url=URL.createObjectURL(blob);
   const a=document.createElement('a'); a.href=url; a.download=`wm-progress-${new Date().toISOString().slice(0,10)}.csv`; document.body.appendChild(a); a.click(); a.remove();
 }
+
+function exportJson(){
+  const exportData = {
+    exportDate: new Date().toISOString(),
+    version: '1.0',
+    scores: store.get(),
+    profile: profileStore.get(),
+    preferences: prefs.get(),
+    lifestyle: lifestyleStore.get(),
+    realWorldWins: realWorldStore.get(),
+    focus: focusStore.get(),
+    pwa: pwaStore.get()
+  };
+  const json = JSON.stringify(exportData, null, 2);
+  const blob = new Blob([json], {type: 'application/json;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `wm-lab-backup-${new Date().toISOString().slice(0,10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  toast('Data exported to JSON', 'ok');
+}
+
 function nv(x){ return (x===undefined||x===null)?'':x; }
 
 function parseSpanFromScore(s){ const m=/L(\d+)/i.exec(s||''); return m? +m[1] : 0; }
@@ -2571,6 +2859,7 @@ function calculateWeeklyStats(storeData) {
       else if (key === 'dualNback') score = r.posAcc ?? 0;
       else if (key === 'filterPos') score = r.acc ?? parseFilterAcc(r.scoreStr);
       else if (key === 'mult') score = r.acc ?? parseMultAcc(r.scoreStr);
+      else if (key === 'opSpan') score = r.letterAcc ?? 0;
       else if (key === 'spatial') score = ((r.level ?? 1) / 4) * 100;
       else if (key === 'corsi') score = ((r.maxSpan ?? 2) / 7) * 100;
       return { ts: new Date(r.ts), score };
@@ -2601,7 +2890,7 @@ function calculateWeeklyStats(storeData) {
 function calculateDomainScores(storeData, profile) {
   const domainMap = {
     attention: ['nback', 'dualNback', 'filterPos'],
-    verbal: ['span', 'mult'],
+    verbal: ['span', 'mult', 'opSpan'],
     spatial: ['spatial', 'crossmodal', 'corsi']
   };
 
@@ -2624,6 +2913,7 @@ function calculateDomainScores(storeData, profile) {
           return Math.min(100, (level / 5) * 100); // Level 5 = 100%
         }
         if (r.type === 'mult') return r.acc ?? parseMultAcc(r.scoreStr) ?? 50;
+        if (r.type === 'opSpan') return r.letterAcc ?? 50;
         if (r.type === 'spatial') return (r.cleared / 4) * 100; // Max 4 levels
         if (r.type === 'crossmodal') return (r.cleared / 3) * 100;
         if (r.type === 'corsi') return (r.span / 7) * 100; // Max span 7
@@ -3093,22 +3383,91 @@ function renderLifestyleCorrelation() {
     <div class="card stack">
       <h3 class="caps tight">Lifestyle-Performance Insights 📊</h3>
       <p class="muted" style="font-size:12px">Based on ${insights.matchedDays} days with both task and lifestyle data</p>
-      
+
       ${insights.summary ? `
         <div class="note">
           <div class="muted" style="font-size:13px"><strong>Key Insight:</strong> ${insights.summary}</div>
         </div>
       ` : ''}
-      
+
+      <canvas id="correlation-chart" width="400" height="120" style="width:100%;height:120px"></canvas>
+
       <div class="stack" style="gap:6px">
         ${correlationItems}
       </div>
-      
+
       <div class="muted" style="font-size:11px; text-align:center; margin-top:8px">
         Correlation strength: ✅ Strong positive (>30%) • ⚠️ Strong negative (<-30%) • ➖ Weak
       </div>
     </div>
   `;
+
+  // Draw correlation bar chart
+  drawCorrelationChart(insights.correlations);
+}
+
+function drawCorrelationChart(correlations) {
+  const canvas = document.getElementById('correlation-chart');
+  if (!canvas || !correlations || correlations.length === 0) return;
+
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width;
+  const h = canvas.height;
+  const padding = 60;
+  const barHeight = 20;
+  const gap = 8;
+
+  ctx.clearRect(0, 0, w, h);
+
+  // Draw center line (0)
+  const centerX = w / 2;
+  ctx.strokeStyle = '#243043';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(centerX, 10);
+  ctx.lineTo(centerX, h - 10);
+  ctx.stroke();
+
+  // Draw bars
+  const maxCorrelations = Math.min(correlations.length, 4);
+  const startY = (h - (maxCorrelations * (barHeight + gap) - gap)) / 2;
+
+  correlations.slice(0, maxCorrelations).forEach((corr, i) => {
+    const y = startY + i * (barHeight + gap);
+    const barWidth = Math.abs(corr.value) * (centerX - padding);
+    const isPositive = corr.value >= 0;
+
+    // Bar color
+    ctx.fillStyle = corr.value > 0.3 ? '#35bf88' : corr.value < -0.3 ? '#d0657a' : '#7a8fa8';
+
+    // Draw bar
+    if (isPositive) {
+      ctx.fillRect(centerX, y, barWidth, barHeight);
+    } else {
+      ctx.fillRect(centerX - barWidth, y, barWidth, barHeight);
+    }
+
+    // Label on left
+    ctx.fillStyle = '#9db0cc';
+    ctx.font = '11px system-ui';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(corr.factor, padding - 5, y + barHeight / 2);
+
+    // Value on bar end
+    ctx.fillStyle = '#e8f0ff';
+    ctx.textAlign = isPositive ? 'left' : 'right';
+    const valueX = isPositive ? centerX + barWidth + 5 : centerX - barWidth - 5;
+    ctx.fillText(`${(corr.value * 100).toFixed(0)}%`, valueX, y + barHeight / 2);
+  });
+
+  // Axis labels
+  ctx.fillStyle = '#7a8fa8';
+  ctx.font = '10px system-ui';
+  ctx.textAlign = 'center';
+  ctx.fillText('-100%', padding, h - 3);
+  ctx.fillText('0', centerX, h - 3);
+  ctx.fillText('+100%', w - padding, h - 3);
 }
 
 function renderPWAAnalytics() {
