@@ -238,6 +238,8 @@ store.push = function(key, entry) {
   s[key].push({ ...entry, type: key, ts: entry.ts ?? new Date().toISOString() });
   this.set(s);
   if (document.querySelector('#scores')) renderScores();
+  // Update personal best displays on launchpad
+  if (typeof updateLaunchpadPBs === 'function') updateLaunchpadPBs();
 };
 store.reset = function() {
   localStorage.removeItem(this.key);
@@ -1344,6 +1346,62 @@ document.querySelectorAll('[data-run]').forEach(b=>{
     if (mode==='mult') runMult();
   };
 });
+
+// Display personal bests on launchpad buttons
+function updateLaunchpadPBs() {
+  const pbLabels = {
+    span: () => {
+      const pb = getPersonalBest('span');
+      return pb !== null ? `Best: L${pb}` : null;
+    },
+    spatial: () => {
+      const pb = getPersonalBest('spatial');
+      return pb !== null ? `Best: ${pb}/3` : null;
+    },
+    crossmodal: () => {
+      const pb = getPersonalBest('crossmodal');
+      return pb !== null ? `Best: ${pb}/3` : null;
+    },
+    nback: () => {
+      const pb = getPersonalBest('nback');
+      if (!pb) return null;
+      if (pb.acc2 !== undefined) return `2-back: ${pb.acc2}%`;
+      if (pb.acc1 !== undefined) return `1-back: ${pb.acc1}%`;
+      return null;
+    },
+    filterPos: () => {
+      const pb = getPersonalBest('filterPos');
+      if (!pb) return null;
+      return `Best: ${pb.acc}% in ${pb.time}s`;
+    },
+    mult: () => {
+      const pb = getPersonalBest('mult');
+      return pb !== null ? `Best: ${pb}%` : null;
+    }
+  };
+
+  document.querySelectorAll('[data-run]').forEach(btn => {
+    const mode = btn.dataset.run;
+    const getLabelFn = pbLabels[mode];
+    if (!getLabelFn) return;
+
+    const label = getLabelFn();
+    // Remove existing PB badge if any
+    const existingBadge = btn.querySelector('.pb-badge');
+    if (existingBadge) existingBadge.remove();
+
+    if (label) {
+      const badge = document.createElement('span');
+      badge.className = 'pb-badge';
+      badge.style.cssText = 'display:block; font-size:11px; opacity:0.75; margin-top:2px';
+      badge.textContent = label;
+      btn.appendChild(badge);
+    }
+  });
+}
+
+// Call on page load
+updateLaunchpadPBs();
 
 /* ---------- 1) WM Span ---------- */
 async function runSpan(doSave = true){
