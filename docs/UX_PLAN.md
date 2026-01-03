@@ -87,7 +87,7 @@
 | Task completion animation | Brief celebratory animation on success | Low | ✅ Phase 4 |
 | Performance summary | "You scored 80% - 5% better than last time" | Medium | ✅ Phase 2 |
 | Encouragement messages | Context-aware tips for improvement | Medium | ✅ Phase 2 |
-| Next action suggestion | "Try again" or "Move to next task" buttons | Low | ❌ Deferred |
+| Next action suggestion | "Try again" or "Move to next task" buttons | Low | ✅ Session 9 |
 
 ### 2.4 Mobile Experience
 
