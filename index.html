@@ -1991,7 +1991,7 @@ function yesNo(){ return new Promise(res=>{ const y=$('#yes'), n=$('#no'); const
 /* ---------- 2.5) Cross-modal Binding ---------- */
 async function runCrossModal(){
   let level = 1, cleared=0;
-  const maxLevel = 3;
+  const maxLevel = 4; // L1=2, L2=3, L3=4, L4=5 items
   while (level<=maxLevel){
     const ok = await crossModalLevel(level);
     if (ok){ cleared++; level++; } else break;
@@ -3246,7 +3246,7 @@ function calculateDomainScores(storeData, profile) {
         if (r.type === 'mult') return r.acc ?? parseMultAcc(r.scoreStr) ?? 50;
         if (r.type === 'opSpan') return r.letterAcc ?? 50;
         if (r.type === 'spatial') return (r.cleared / 4) * 100; // Max 4 levels
-        if (r.type === 'crossmodal') return (r.cleared / 3) * 100;
+        if (r.type === 'crossmodal') return (r.cleared / 4) * 100; // Max 4 levels
         if (r.type === 'corsi') return (r.span / 7) * 100; // Max span 7
         return 50;
       }).filter(s => Number.isFinite(s));
@@ -3378,7 +3378,7 @@ function drawDomainChart(domain) {
     if (r.type === 'corsi') return (r.span / 7) * 100;
     if (r.type === 'mult') return r.acc ?? parseMultAcc(r.scoreStr) ?? 50;
     if (r.type === 'spatial') return (r.cleared / 4) * 100; // Max 4 levels
-    if (r.type === 'crossmodal') return (r.cleared / 3) * 100;
+    if (r.type === 'crossmodal') return (r.cleared / 4) * 100; // Max 4 levels
     return 50;
   });
 
