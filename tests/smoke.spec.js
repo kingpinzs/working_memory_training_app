@@ -86,18 +86,87 @@ test.describe('App Smoke Tests', () => {
 
   test('launchpad displays assessment buttons', async ({ page }) => {
     await page.goto(indexPath);
-    
+
     // Click Launchpad tab
     await page.click('[data-tab="launchpad"]');
-    
+
     // Verify assessment buttons exist (updated selectors for new data-run values)
     const wmSpanBtn = await page.locator('button[data-run="span"]');
     await expect(wmSpanBtn).toBeVisible();
-    
+
     const spatialBtn = await page.locator('button[data-run="spatial"]');
     await expect(spatialBtn).toBeVisible();
-    
+
     const nbackBtn = await page.locator('button[data-run="nback"]');
     await expect(nbackBtn).toBeVisible();
+  });
+
+  test('high contrast toggle works', async ({ page }) => {
+    await page.goto(indexPath);
+
+    // Click Launchpad tab to ensure we're on the right view
+    await page.click('[data-tab="launchpad"]');
+
+    // Find high contrast toggle
+    const contrastToggle = await page.locator('#contrastToggle');
+    await expect(contrastToggle).toBeVisible();
+
+    // Get initial state
+    const initialState = await contrastToggle.isChecked();
+    expect(initialState).toBe(false);
+
+    // Toggle it on
+    await contrastToggle.click();
+
+    // Verify state changed
+    const newState = await contrastToggle.isChecked();
+    expect(newState).toBe(true);
+
+    // Verify body has high-contrast class
+    const hasClass = await page.evaluate(() => {
+      return document.body.classList.contains('high-contrast');
+    });
+    expect(hasClass).toBe(true);
+
+    // Verify it persisted to localStorage
+    const storedValue = await page.evaluate(() => {
+      const prefs = JSON.parse(localStorage.getItem('wmLabPrefs') || '{}');
+      return prefs.highContrast;
+    });
+    expect(storedValue).toBe(true);
+  });
+
+  test('new task buttons exist', async ({ page }) => {
+    await page.goto(indexPath);
+
+    // Click Launchpad tab
+    await page.click('[data-tab="launchpad"]');
+
+    // Verify new task buttons exist
+    const dualNbackBtn = await page.locator('button[data-run="dualNback"]');
+    await expect(dualNbackBtn).toBeVisible();
+
+    const audioNbackBtn = await page.locator('button[data-run="audioNback"]');
+    await expect(audioNbackBtn).toBeVisible();
+
+    const corsiBtn = await page.locator('button[data-run="corsi"]');
+    await expect(corsiBtn).toBeVisible();
+
+    const opSpanBtn = await page.locator('button[data-run="opSpan"]');
+    await expect(opSpanBtn).toBeVisible();
+  });
+
+  test('BrainTok tab exists', async ({ page }) => {
+    await page.goto(indexPath);
+
+    // Verify BrainTok tab exists
+    const braintokTab = await page.locator('[data-tab="braintok"]');
+    await expect(braintokTab).toBeVisible();
+
+    // Click BrainTok tab
+    await braintokTab.click();
+
+    // Verify tab is selected
+    await expect(braintokTab).toHaveAttribute('aria-selected', 'true');
   });
 });

@@ -89,6 +89,16 @@
     *,*::before,*::after{animation-duration:0.01ms !important;animation-iteration-count:1 !important;transition-duration:0.01ms !important}
     .calendar-day:hover,.domain-card:hover,button:hover,.btn:hover{transform:none}
   }
+  /* Phase 7.1: High contrast mode */
+  body.high-contrast{
+    --bg:#000; --card:#111; --ink:#fff; --muted:#ccc;
+    --brand:#00ffff; --accent:#00ff00; --warn:#ffff00; --err:#ff0000;
+    --ok:#00ff00; --line:#666; --btn:#222; --btn-hi:#444; --focus:#00f;
+  }
+  body.high-contrast .card{border-width:2px}
+  body.high-contrast button,body.high-contrast .btn,body.high-contrast .pill{border-width:2px}
+  body.high-contrast .muted{color:#ccc}
+  body.high-contrast .braintok-card{border-width:2px}
   /* Phase 5: BrainTok swipeable cards */
   .braintok-container{position:relative; height:400px; width:100%; max-width:350px; margin:0 auto; perspective:1000px}
   .braintok-card{position:absolute; top:0; left:0; right:0; height:100%; background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:24px; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; transition:transform .3s ease, opacity .3s ease; touch-action:pan-y; user-select:none; cursor:grab}
@@ -139,6 +149,12 @@
         </label>
         <div><b>Coach Mode</b> <span class="muted">adaptive session</span></div>
       </div>
+      <div class="row" title="High contrast colors for accessibility">
+        <label class="switch">
+          <input id="contrastToggle" type="checkbox" aria-label="Toggle high contrast mode">
+        </label>
+        <div><b>High Contrast</b> <span class="muted">accessibility</span></div>
+      </div>
       <div class="sep"></div>
       <div class="stack">
         <div class="caps tight">Assessments</div>
@@ -148,6 +164,7 @@
           <button data-run="crossmodal" aria-label="Start Cross-modal Binding task">Cross-modal Binding</button>
           <button data-run="nback" aria-label="Start N-Back emotion task">1-Back / 2-Back (emotion)</button>
           <button data-run="dualNback" aria-label="Start Dual N-Back task">Dual N-Back</button>
+          <button data-run="audioNback" aria-label="Start Audio N-Back task">Audio N-Back</button>
           <button data-run="corsi" aria-label="Start Corsi Block-Tapping task">Corsi Blocks</button>
           <button data-run="opSpan" aria-label="Start Operation Span task">Operation Span</button>
         </div>
@@ -298,9 +315,12 @@ function getPersonalBest(taskKey, metric = 'bestLevel') {
     case 'crossmodal':
       return Math.max(...records.map(r => r.cleared || 0));
     case 'nback':
-      // Best is highest acc2 if available, otherwise acc1
+    case 'audioNback':
+      // Best is highest acc3, acc2, or acc1
+      const acc3s = records.filter(r => r.acc3 !== undefined).map(r => r.acc3);
       const acc2s = records.filter(r => r.acc2 !== undefined).map(r => r.acc2);
       const acc1s = records.filter(r => r.acc1 !== undefined).map(r => r.acc1);
+      if (acc3s.length > 0) return { acc3: Math.max(...acc3s) };
       if (acc2s.length > 0) return { acc2: Math.max(...acc2s) };
       if (acc1s.length > 0) return { acc1: Math.max(...acc1s) };
       return null;
@@ -327,8 +347,12 @@ function isPersonalBest(taskKey, newValue) {
     case 'crossmodal':
       return newValue > best;
     case 'nback':
-      // Check if new acc1 or acc2 beats the previous best
+    case 'audioNback':
+      // Check if new acc1, acc2, or acc3 beats the previous best
       if (typeof newValue === 'object') {
+        if (newValue.acc3 !== undefined && best.acc3 !== undefined) {
+          return newValue.acc3 > best.acc3;
+        }
         if (newValue.acc2 !== undefined && best.acc2 !== undefined) {
           return newValue.acc2 > best.acc2;
         }
@@ -370,9 +394,10 @@ function getPerformanceComparison(taskKey, newValue) {
       label = diff > 0 ? `+${diff}` : diff < 0 ? `${diff}` : 'same';
       break;
     case 'nback':
-      // Compare acc1 or acc2 depending on what's available
-      const prevAcc = prev.acc2 ?? prev.acc1 ?? 0;
-      const newAcc = newValue.acc2 ?? newValue.acc1 ?? 0;
+    case 'audioNback':
+      // Compare acc1, acc2, or acc3 depending on what's available
+      const prevAcc = prev.acc3 ?? prev.acc2 ?? prev.acc1 ?? 0;
+      const newAcc = newValue.acc3 ?? newValue.acc2 ?? newValue.acc1 ?? 0;
       diff = newAcc - prevAcc;
       label = diff > 0 ? `+${diff}%` : diff < 0 ? `${diff}%` : 'same';
       break;
@@ -1690,6 +1715,18 @@ function coachOn(){ return !!prefs.get().coachMode; }
 window.coachOn = coachOn; // Expose for testing
 $('#coachSession').onclick = runCoachSession;
 
+/* ---------- High Contrast Mode persistence ---------- */
+const contrastToggle = $('#contrastToggle');
+contrastToggle.checked = !!prefs.get().highContrast;
+if (prefs.get().highContrast) document.body.classList.add('high-contrast');
+contrastToggle.onchange = ()=>{
+  const p=prefs.get();
+  p.highContrast=contrastToggle.checked;
+  prefs.set(p);
+  document.body.classList.toggle('high-contrast', p.highContrast);
+  toast(`High Contrast ${p.highContrast?'ON':'OFF'}`);
+};
+
 /* ---------- Data (sample lists) ---------- */
 // Multiple word lists per level for variety (randomly selected each trial)
 const spanListSets = {
@@ -1729,6 +1766,7 @@ function runTask(mode) {
   if (mode==='crossmodal') runCrossModal();
   if (mode==='nback') runNBack();
   if (mode==='dualNback') runDualNBack();
+  if (mode==='audioNback') runAudioNBack();
   if (mode==='corsi') runCorsi();
   if (mode==='opSpan') runOpSpan();
   if (mode==='filterPos') runFilterPos();
@@ -1765,6 +1803,14 @@ function updateLaunchpadPBs() {
       if (!pb) return null;
       const avg = Math.round((pb.posAcc + pb.audioAcc) / 2);
       return `${pb.n}-back: ${avg}%`;
+    },
+    audioNback: () => {
+      const pb = getPersonalBest('audioNback');
+      if (!pb) return null;
+      if (pb.acc3 !== undefined) return `3-back: ${pb.acc3}%`;
+      if (pb.acc2 !== undefined) return `2-back: ${pb.acc2}%`;
+      if (pb.acc1 !== undefined) return `1-back: ${pb.acc1}%`;
+      return null;
     },
     corsi: () => {
       const pb = getPersonalBest('corsi');
@@ -2070,13 +2116,17 @@ function finishNBack({b1,b2,b3}){
   const acc1 = b1? accPct(b1.hits,b1.miss,b1.fa) : undefined;
   const acc2 = b2? accPct(b2.hits,b2.miss,b2.fa) : undefined;
   const acc3 = b3? accPct(b3.hits,b3.miss,b3.fa) : undefined;
+  // Calculate average RT across all blocks
+  const rtVals = [b1?.avgRt, b2?.avgRt, b3?.avgRt].filter(v => v !== null && v !== undefined);
+  const avgRt = rtVals.length > 0 ? Math.round(rtVals.reduce((a,b)=>a+b,0) / rtVals.length) : null;
   const pb = isPersonalBest('nback', {acc1, acc2, acc3});
   const cmp = getPerformanceComparison('nback', {acc1, acc2, acc3});
   const bestAcc = Math.max(acc1 || 0, acc2 || 0, acc3 || 0);
   const isGood = bestAcc >= 70; // 70%+ accuracy is good
   const encourage = getEncouragement(isGood, pb);
-  store.push('nback',{scoreStr, acc1, acc2, acc3, fa1:b1?.fa, fa2:b2?.fa, fa3:b3?.fa, personalBest: pb});
-  toast(`N-Back · ${scoreStr}${pb ? ' 🏆 ' : cmp ? cmp + ' · ' : ' · '}${encourage}`, pb ? 'ok' : isGood ? 'info' : 'info');
+  store.push('nback',{scoreStr, acc1, acc2, acc3, fa1:b1?.fa, fa2:b2?.fa, fa3:b3?.fa, avgRt, personalBest: pb});
+  const rtStr = avgRt ? ` (${avgRt}ms avg)` : '';
+  toast(`N-Back · ${scoreStr}${rtStr}${pb ? ' 🏆 ' : cmp ? cmp + ' · ' : ' · '}${encourage}`, pb ? 'ok' : isGood ? 'info' : 'info');
 }
 function accPct(h,m,fa){ const t=h+m; return t? Math.round((h/t)*100) : 0; }
 async function blockN(n, secs=60, doSave = true){
@@ -2095,25 +2145,47 @@ async function blockN(n, secs=60, doSave = true){
           <div>False Alarms: <b id="fa">0</b></div>
           <div class="timer">Time: <b id="t">${secs}</b>s</div>
         </div>
+        <div class="muted" style="text-align:center; font-size:12px">Avg RT: <b id="rtDisplay">--</b>ms</div>
       </div>`;
     let i=0,hits=0,miss=0,fa=0; let canPress=true; const stim=$('#stim');
     const timerEl = $('#t');
+    const rtDisplay = $('#rtDisplay');
     let timerInterval;
+    let stimStart = 0;
+    const rtData = [];
+
     if (doSave) {
         timerInterval = setInterval(()=>{ const left=parseInt(timerEl.textContent,10)-1; timerEl.textContent=left; if (left<=0){ clearInterval(timerInterval); document.onkeydown=null; finish();}},1000);
     }
-    document.onkeydown=(e)=>{ if (e.code==='Space'&&canPress){ const target=(i>=n)&&(stream[i]===stream[i-n]); if (target) hits++; else fa++; canPress=false; if(doSave){$('#hits').textContent=hits; $('#fa').textContent=fa;} }};
+    document.onkeydown=(e)=>{
+      if (e.code==='Space'&&canPress){
+        const rt = performance.now() - stimStart;
+        const target=(i>=n)&&(stream[i]===stream[i-n]);
+        if (target) {
+          hits++;
+          rtData.push(rt); // Only record RT for correct hits
+          const avgRt = Math.round(rtData.reduce((a,b)=>a+b,0) / rtData.length);
+          if(doSave) rtDisplay.textContent = avgRt;
+        } else fa++;
+        canPress=false;
+        if(doSave){$('#hits').textContent=hits; $('#fa').textContent=fa;}
+      }
+    };
     async function step(){
       if (i>=stream.length || (doSave && parseInt(timerEl.textContent,10) <= 0)){ finish(); return; }
-      stim.textContent=stream[i]; canPress=true; await wait(1300);
+      stim.textContent=stream[i];
+      stimStart = performance.now();
+      canPress=true;
+      await wait(1300);
       const target=(i>=n)&&(stream[i]===stream[i-n]); if (target&&canPress){ miss++; if(doSave) $('#miss').textContent=miss; }
       canPress=false; i++; await wait(250); step();
-    } 
+    }
     step();
-    function finish(){ 
-        if(doSave) document.onkeydown=null; 
+    function finish(){
+        if(doSave) document.onkeydown=null;
         if(timerInterval) clearInterval(timerInterval);
-        resolve({hits,miss,fa,totalTargets:stream.filter((w,idx)=>idx>=n&&w===stream[idx-n]).length}); 
+        const avgRt = rtData.length > 0 ? Math.round(rtData.reduce((a,b)=>a+b,0) / rtData.length) : null;
+        resolve({hits,miss,fa,totalTargets:stream.filter((w,idx)=>idx>=n&&w===stream[idx-n]).length,avgRt});
     }
   });
 }
@@ -2309,6 +2381,186 @@ async function dualNBackBlock(n, secs) {
       const posTotalTargets = posStream.filter((p, i) => i >= n && p === posStream[i - n]).length;
       const audioTotalTargets = audioStream.filter((a, i) => i >= n && a === audioStream[i - n]).length;
       resolve({ posHits, posMiss, posFA, posTotalTargets, audioHits, audioMiss, audioFA, audioTotalTargets });
+    }
+  });
+}
+
+/* ---------- 3.55) Audio N-Back ---------- */
+// Audio-only N-Back using spoken letters
+const audioNBackLetters = ['B', 'C', 'D', 'F', 'G', 'H', 'J', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'X', 'Z'];
+
+async function runAudioNBack() {
+  const adaptive = coachOn();
+  if (adaptive) {
+    const history = store.get().audioNback || [];
+    const startN = decideAudioNFromHistory(history);
+    const trials = startN === 1 ? 40 : startN === 2 ? 50 : 60;
+    const b = await audioNBackBlock(startN, trials);
+    const acc = accPct(b.hits, b.miss, b.fa);
+
+    // Auto-promotion logic
+    if (startN === 1 && acc >= 85 && b.fa <= 2) {
+      const b2 = await audioNBackBlock(2, 50);
+      finishAudioNBack({b1: b, b2});
+    } else if (startN === 2 && acc >= 80 && b.fa <= 3) {
+      const b3 = await audioNBackBlock(3, 60);
+      finishAudioNBack({b2: b, b3});
+    } else {
+      finishAudioNBack(startN === 1 ? {b1: b} : startN === 2 ? {b2: b} : {b3: b});
+    }
+  } else {
+    const b1 = await audioNBackBlock(1, 35);
+    const b2 = await audioNBackBlock(2, 45);
+    finishAudioNBack({b1, b2});
+  }
+}
+
+function decideAudioNFromHistory(sessions) {
+  if (!sessions || sessions.length === 0) return 1;
+  const recent = sessions.slice(-3);
+
+  let acc3Sum = 0, acc3Count = 0;
+  let acc2Sum = 0, acc2Count = 0;
+  let acc1Sum = 0, acc1Count = 0;
+
+  recent.forEach(s => {
+    if (s.acc3 !== undefined) { acc3Sum += s.acc3; acc3Count++; }
+    if (s.acc2 !== undefined) { acc2Sum += s.acc2; acc2Count++; }
+    if (s.acc1 !== undefined) { acc1Sum += s.acc1; acc1Count++; }
+  });
+
+  const avgAcc3 = acc3Count > 0 ? acc3Sum / acc3Count : 0;
+  const avgAcc2 = acc2Count > 0 ? acc2Sum / acc2Count : 0;
+  const avgAcc1 = acc1Count > 0 ? acc1Sum / acc1Count : 0;
+
+  if (avgAcc3 >= 70) return 3;
+  if (avgAcc2 >= 80 && acc2Count >= 3) return 3;
+  if (avgAcc2 >= 75) return 2;
+  if (avgAcc1 >= 85) return 2;
+  return 1;
+}
+
+function finishAudioNBack({b1, b2, b3}) {
+  let parts = [];
+  if (b1) parts.push(`1-back H/M/FA ${b1.hits}/${b1.miss}/${b1.fa}`);
+  if (b2) parts.push(`2-back ${b2.hits}/${b2.miss}/${b2.fa}`);
+  if (b3) parts.push(`3-back ${b3.hits}/${b3.miss}/${b3.fa}`);
+  const scoreStr = parts.join(' · ');
+  const acc1 = b1 ? accPct(b1.hits, b1.miss, b1.fa) : undefined;
+  const acc2 = b2 ? accPct(b2.hits, b2.miss, b2.fa) : undefined;
+  const acc3 = b3 ? accPct(b3.hits, b3.miss, b3.fa) : undefined;
+  // Calculate average RT across all blocks
+  const rtVals = [b1?.avgRt, b2?.avgRt, b3?.avgRt].filter(v => v !== null && v !== undefined);
+  const avgRt = rtVals.length > 0 ? Math.round(rtVals.reduce((a,b)=>a+b,0) / rtVals.length) : null;
+  const pb = isPersonalBest('audioNback', {acc1, acc2, acc3});
+  const cmp = getPerformanceComparison('audioNback', {acc1, acc2, acc3});
+  const bestAcc = Math.max(acc1 || 0, acc2 || 0, acc3 || 0);
+  const isGood = bestAcc >= 70;
+  const encourage = getEncouragement(isGood, pb);
+  store.push('audioNback', {scoreStr, acc1, acc2, acc3, fa1: b1?.fa, fa2: b2?.fa, fa3: b3?.fa, avgRt, personalBest: pb});
+  const rtStr = avgRt ? ` (${avgRt}ms avg)` : '';
+  toast(`Audio N-Back · ${scoreStr}${rtStr}${pb ? ' 🏆 ' : cmp ? cmp + ' · ' : ' · '}${encourage}`, pb ? 'ok' : isGood ? 'info' : 'info');
+}
+
+async function audioNBackBlock(n, trials) {
+  // Generate letter stream with some guaranteed matches
+  const stream = [];
+  for (let i = 0; i < trials; i++) {
+    stream.push(audioNBackLetters[Math.floor(Math.random() * audioNBackLetters.length)]);
+  }
+  // Insert matches at pseudo-random intervals
+  for (let i = n + 2; i < stream.length; i += Math.floor(4 + Math.random() * 5)) {
+    stream[i] = stream[i - n];
+  }
+
+  return new Promise(async resolve => {
+    screen.innerHTML = `
+      <div class="stack">
+        <h2>Audio N-Back (${n}-back)</h2>
+        <div class="muted">Press <span class="kbd">Space</span> when you hear a letter that matches ${n} back.</div>
+        <div class="muted" style="font-size:12px">Make sure your sound is on! 🔊</div>
+        <div class="center" style="height:120px">
+          <div id="audioVisual" style="font-size:80px; opacity:0.3">🔊</div>
+        </div>
+        <div style="text-align:center; margin:16px 0">
+          <div class="muted">Trial: <b id="trialNum">0</b> / ${trials}</div>
+        </div>
+        <div class="row center">
+          <div>Hits: <b id="hits">0</b></div>
+          <div>Misses: <b id="miss">0</b></div>
+          <div>False Alarms: <b id="fa">0</b></div>
+        </div>
+        <div class="muted" style="text-align:center; font-size:12px">Avg RT: <b id="rtDisplay">--</b>ms</div>
+      </div>`;
+
+    const audioVisual = $('#audioVisual');
+    const trialNum = $('#trialNum');
+    const rtDisplay = $('#rtDisplay');
+    let i = 0, hits = 0, miss = 0, fa = 0;
+    let canPress = true;
+    let stimStart = 0;
+    const rtData = [];
+
+    function speakLetter(letter) {
+      if ('speechSynthesis' in window) {
+        speechSynthesis.cancel(); // Cancel any pending speech
+        const utter = new SpeechSynthesisUtterance(letter);
+        utter.rate = 0.9;
+        utter.volume = 1.0;
+        utter.pitch = 1.0;
+        speechSynthesis.speak(utter);
+      }
+    }
+
+    document.onkeydown = (e) => {
+      if (e.code === 'Space' && canPress) {
+        const rt = performance.now() - stimStart;
+        const target = (i >= n) && (stream[i] === stream[i - n]);
+        if (target) {
+          hits++;
+          rtData.push(rt);
+          const avgRt = Math.round(rtData.reduce((a,b)=>a+b,0) / rtData.length);
+          rtDisplay.textContent = avgRt;
+        } else fa++;
+        canPress = false;
+        $('#hits').textContent = hits;
+        $('#fa').textContent = fa;
+        e.preventDefault();
+      }
+    };
+
+    async function step() {
+      if (i >= stream.length) { finish(); return; }
+
+      trialNum.textContent = i + 1;
+      speakLetter(stream[i]);
+      stimStart = performance.now();
+      audioVisual.style.opacity = '1';
+      canPress = true;
+
+      await wait(500);
+      audioVisual.style.opacity = '0.3';
+
+      await wait(1200);
+      const target = (i >= n) && (stream[i] === stream[i - n]);
+      if (target && canPress) {
+        miss++;
+        $('#miss').textContent = miss;
+      }
+      canPress = false;
+      i++;
+      await wait(300);
+      step();
+    }
+
+    step();
+
+    function finish() {
+      document.onkeydown = null;
+      speechSynthesis.cancel();
+      const totalTargets = stream.filter((l, idx) => idx >= n && l === stream[idx - n]).length;
+      const avgRt = rtData.length > 0 ? Math.round(rtData.reduce((a,b)=>a+b,0) / rtData.length) : null;
+      resolve({hits, miss, fa, totalTargets, avgRt});
     }
   });
 }
@@ -2889,7 +3141,7 @@ function calculateWeeklyStats(storeData) {
 /* ---------- Analytics Functions ---------- */
 function calculateDomainScores(storeData, profile) {
   const domainMap = {
-    attention: ['nback', 'dualNback', 'filterPos'],
+    attention: ['nback', 'dualNback', 'audioNback', 'filterPos'],
     verbal: ['span', 'mult', 'opSpan'],
     spatial: ['spatial', 'crossmodal', 'corsi']
   };
@@ -3025,8 +3277,8 @@ function renderStreakCalendar(activityMap) {
 function drawDomainChart(domain) {
   const s = store.get();
   const domainMap = {
-    attention: ['nback', 'dualNback', 'filterPos'],
-    verbal: ['span', 'mult'],
+    attention: ['nback', 'dualNback', 'audioNback', 'filterPos'],
+    verbal: ['span', 'mult', 'opSpan'],
     spatial: ['spatial', 'crossmodal', 'corsi']
   };
 
