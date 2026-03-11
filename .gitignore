@@ -25,6 +25,16 @@ add-sample-data.html
 test-sprint2.html
 test-sprint3.html
 
+# Capacitor
+www/
+
+# Android build artifacts
+android/app/build/
+android/.gradle/
+android/local.properties
+*.apk
+*.aab
+
 # Logs
 *.log
 npm-debug.log*
