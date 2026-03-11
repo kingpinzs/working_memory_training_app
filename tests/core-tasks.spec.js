@@ -123,15 +123,18 @@ test.describe('N-Back (Emotion) Task', () => {
     // Start task
     await page.click('button[data-run="nback"]');
     
-    // Wait for task to be ready
-    await page.waitForTimeout(1000);
-    
+    // Wait for task to be ready (N-Back screen content appears)
+    await page.waitForFunction(() => {
+      const screen = document.querySelector('#screen');
+      return screen && screen.textContent.length > 10;
+    }, { timeout: 5000 });
+
     // Press spacebar
     await page.keyboard.press('Space');
-    
-    // Spacebar should register (no error thrown)
-    // This is a basic test that the event handler is set up
-    expect(true).toBe(true);
+
+    // Spacebar should register - verify task is still running (screen has task content)
+    const screenContent = await page.locator('#screen').textContent();
+    expect(screenContent.length).toBeGreaterThan(0);
   });
 
   test('N-Back uses coach mode adaptive logic', async ({ page }) => {
@@ -259,8 +262,8 @@ test.describe('Spatial + Verbal Binding Task', () => {
     // Check if pyramid structure exists
     const pyramidExists = await page.locator('.pyramid').count();
     
-    // Pyramid should exist (even if timing varies)
-    expect(typeof pyramidExists).toBe('number');
+    // Pyramid should exist
+    expect(pyramidExists).toBeGreaterThan(0);
   });
 
   test('spatial validates position recall', async ({ page }) => {
@@ -296,9 +299,9 @@ test.describe('Spatial + Verbal Binding Task', () => {
     const isChecked = await coachToggle.isChecked();
     expect(isChecked).toBe(true);
     
-    // In coach mode, both verbal and spatial must be correct to advance
-    // This is validated in the task implementation
-    expect(true).toBe(true);
+    // In coach mode, spatial task should be running with coach mode active
+    const isCoachActive = await page.evaluate(() => window.coachOn());
+    expect(isCoachActive).toBe(true);
   });
 
   test('spatial score format is correct', async ({ page }) => {
@@ -365,22 +368,18 @@ test.describe('Task Integration Tests', () => {
     const spanBtn = await page.locator('button[data-run="span"]');
     const spatialBtn = await page.locator('button[data-run="spatial"]');
     const nbackBtn = await page.locator('button[data-run="nback"]');
-    const crossmodalBtn = await page.locator('button[data-run="runCrossmodal"]');
-    const filterPosBtn = await page.locator('button[data-run="runFilterPos"]');
-    const multBtn = await page.locator('button[data-run="runMult"]');
-    
+    const crossmodalBtn = await page.locator('button[data-run="crossmodal"]');
+    const filterPosBtn = await page.locator('button[data-run="filterPos"]');
+    const multBtn = await page.locator('button[data-run="mult"]');
+
     await expect(spanBtn).toBeVisible();
     await expect(spatialBtn).toBeVisible();
     await expect(nbackBtn).toBeVisible();
-    
-    // These may or may not be visible depending on implementation
-    const crossmodalExists = await crossmodalBtn.count();
-    const filterPosExists = await filterPosBtn.count();
-    const multExists = await multBtn.count();
-    
-    expect(crossmodalExists).toBeGreaterThanOrEqual(0);
-    expect(filterPosExists).toBeGreaterThanOrEqual(0);
-    expect(multExists).toBeGreaterThanOrEqual(0);
+
+    // These buttons should also be present in the launchpad
+    await expect(crossmodalBtn).toBeVisible();
+    await expect(filterPosBtn).toBeVisible();
+    await expect(multBtn).toBeVisible();
   });
 
   test('tasks record timestamps', async ({ page }) => {
@@ -425,12 +424,9 @@ test.describe('Task Integration Tests', () => {
       window.toast('Test message', 'info');
     });
     
-    // Toast should appear briefly
-    await page.waitForTimeout(500);
-    
-    // Toast may or may not still be visible (2s timeout)
-    // Just verify the function doesn't error
-    expect(true).toBe(true);
+    // Toast should appear (toast uses role="status", not a class)
+    const toast = page.locator('[role="status"]').first();
+    await expect(toast).toBeVisible({ timeout: 2000 });
   });
 
   test('scores render in scoreboard', async ({ page }) => {

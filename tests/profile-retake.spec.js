@@ -18,8 +18,7 @@ test.describe('Profile Retake Flow', () => {
     await page.reload();
   });
 
-  // TODO: These tests need debugging - tab content switch not working in test environment
-  test.skip('retake quiz button is visible on profile view', async ({ page }) => {
+  test('retake quiz button is visible on profile view', async ({ page }) => {
     await page.goto(indexPath);
 
     // Complete a basic profile first
@@ -51,7 +50,7 @@ test.describe('Profile Retake Flow', () => {
     await expect(retakeBtn).toBeVisible();
   });
 
-  test.skip('retake quiz shows inline confirmation', async ({ page }) => {
+  test('retake quiz shows inline confirmation', async ({ page }) => {
     await page.goto(indexPath);
 
     // Set up existing profile
@@ -86,7 +85,7 @@ test.describe('Profile Retake Flow', () => {
     await expect(confirmBtn).toBeVisible({ timeout: 2000 });
   });
 
-  test.skip('canceling retake preserves existing profile', async ({ page }) => {
+  test('canceling retake preserves existing profile', async ({ page }) => {
     await page.goto(indexPath);
 
     const originalProfile = {
@@ -130,7 +129,7 @@ test.describe('Profile Retake Flow', () => {
     expect(savedProfile.persona).toBe('competitor');
   });
 
-  test.skip('profile displays persona correctly', async ({ page }) => {
+  test('profile displays persona correctly', async ({ page }) => {
     await page.goto(indexPath);
 
     // Set up profile with persona
@@ -156,8 +155,8 @@ test.describe('Profile Retake Flow', () => {
     // Open Profile via button on Dashboard
     await page.click('button:has-text("Profile")');
 
-    // Check that persona title is displayed (Everyday Improver for struggler)
+    // Check that persona title is displayed (The Improver for struggler)
     const profileContent = await page.locator('#screen').textContent();
-    expect(profileContent).toContain('Everyday Improver');
+    expect(profileContent).toContain('The Improver');
   });
 });

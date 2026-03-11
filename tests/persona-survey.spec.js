@@ -202,7 +202,11 @@ test.describe('Persona Validation Survey', () => {
     // Try to complete another task
     await page.click('[data-run="span"]');
     await page.keyboard.press('Enter');
-    await page.waitForTimeout(1000);
+    // Wait for task screen to update
+    await page.waitForFunction(() => {
+      const screen = document.querySelector('#screen');
+      return screen && screen.textContent.length > 10;
+    }, { timeout: 5000 });
 
     // Survey should not appear
     const surveyModal = await page.locator('#personaSurveyModal');
@@ -231,7 +235,11 @@ test.describe('Persona Validation Survey', () => {
     // Complete one more task
     await page.click('[data-run="span"]');
     await page.keyboard.press('Enter');
-    await page.waitForTimeout(1000);
+    // Wait for task screen to update
+    await page.waitForFunction(() => {
+      const screen = document.querySelector('#screen');
+      return screen && screen.textContent.length > 10;
+    }, { timeout: 5000 });
 
     // Survey should not appear yet
     const surveyModal = await page.locator('#personaSurveyModal');

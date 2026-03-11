@@ -329,13 +329,14 @@ test.describe('PWA Integration', () => {
     const appleTouchIcon = await page.locator('link[rel="apple-touch-icon"]');
     const hasAppleIcon = await appleTouchIcon.count();
     
-    // Not required but good practice
+    // If apple-touch-icon exists, verify it has a valid href
     if (hasAppleIcon > 0) {
       const href = await appleTouchIcon.getAttribute('href');
       expect(href).toBeTruthy();
     }
-    
-    // Test passes whether icon exists or not (it's optional)
-    expect(true).toBe(true);
+
+    // App should load correctly regardless of apple-touch-icon presence
+    const title = await page.title();
+    expect(title).toBeTruthy();
   });
 });

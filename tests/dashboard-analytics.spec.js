@@ -28,8 +28,7 @@ test.describe('Dashboard Analytics', () => {
     expect(dashboardContent).toBeTruthy();
   });
 
-  // TODO: Tab content switch not working properly in test environment
-  test.skip('dashboard displays domain scores with sample data', async ({ page }) => {
+  test('dashboard displays domain scores with sample data', async ({ page }) => {
     await page.goto(indexPath);
 
     // Add some sample score data with baseline profile
@@ -71,7 +70,7 @@ test.describe('Dashboard Analytics', () => {
     expect(hasDomainContent).toBe(true);
   });
 
-  test.skip('dashboard shows trend arrows', async ({ page }) => {
+  test('dashboard shows trend arrows', async ({ page }) => {
     await page.goto(indexPath);
 
     // Add data with history for trends
@@ -105,7 +104,7 @@ test.describe('Dashboard Analytics', () => {
     expect(dashboardContent?.length).toBeGreaterThan(50);
   });
 
-  test.skip('dashboard shows weekly comparison', async ({ page }) => {
+  test('dashboard shows weekly comparison', async ({ page }) => {
     await page.goto(indexPath);
 
     // Add data from this week and last week
@@ -161,11 +160,9 @@ test.describe('Dashboard Analytics', () => {
     // Go to Dashboard
     await page.click('[data-tab="dashboard"]');
 
-    // Look for streak calendar or activity visualization
-    const calendar = await page.locator('.streak-calendar, .calendar, [data-streak]');
-    // Calendar may or may not be visible depending on data
-    const count = await calendar.count();
-    expect(count).toBeGreaterThanOrEqual(0);
+    // Streak calendar should render with the sample data
+    const calendar = page.locator('.streak-calendar');
+    await expect(calendar).toBeVisible({ timeout: 3000 });
   });
 
   test('domain score cards are clickable', async ({ page }) => {
@@ -237,7 +234,7 @@ test.describe('Dashboard Analytics', () => {
     const hasLifestyleSection = dashboardContent?.toLowerCase().includes('lifestyle') ||
                                 dashboardContent?.toLowerCase().includes('sleep') ||
                                 dashboardContent?.toLowerCase().includes('exercise');
-    // May or may not show depending on correlation data availability
-    expect(typeof hasLifestyleSection).toBe('boolean');
+    // With lifestyle data present, the section should be visible
+    expect(hasLifestyleSection).toBe(true);
   });
 });

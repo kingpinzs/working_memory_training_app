@@ -107,42 +107,65 @@ test.describe('Coach Session', () => {
       await coachToggle.click();
     }
 
-    // Wait for any initial toast
-    await page.waitForTimeout(300);
-
-    // Check for toast (coach mode ON toast)
-    const toasts = await page.locator('.toast');
-    const toastCount = await toasts.count();
-    // May or may not have a toast visible at this point
-    expect(toastCount).toBeGreaterThanOrEqual(0);
+    // Toggling coach mode should show a toast (toast uses role="status")
+    const toast = page.locator('[role="status"]').first();
+    await expect(toast).toBeVisible({ timeout: 2000 });
   });
 });
 
 test.describe('Coach Session Full Flow', () => {
   const indexPath = 'file://' + path.resolve(__dirname, '../index.html');
 
-  // Mark as slow test - can take several minutes
-  test.slow();
-
-  test.skip('completes full coach session with multiple tasks', async ({ page }) => {
-    // This test is skipped by default as it runs actual cognitive tasks
-    // Uncomment and adjust timeouts for full integration testing
+  test('coach session selects tasks and starts first task', async ({ page }) => {
+    const errors = [];
+    page.on('pageerror', err => errors.push(err.message));
+    page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()); });
 
     await page.goto(indexPath);
 
-    // Enable coach mode
+    // Set up profile and enable coach mode so coach session can run
+    await page.evaluate(() => {
+      localStorage.setItem('wmLabProfile', JSON.stringify({
+        onboardingComplete: true,
+        persona: 'competitor',
+        baseline: { verbal: 50, spatial: 50, attention: 50 },
+        preferences: { style: 'mixed', sessionLength: 'quick' },
+        recommendations: ['nback', 'span'],
+        created: new Date().toISOString()
+      }));
+      localStorage.setItem('wmLabPrefs', JSON.stringify({ coachMode: true }));
+    });
+    await page.reload();
+
     await page.click('[data-tab="launchpad"]');
-    const coachToggle = await page.locator('#coachToggle');
 
-    if (!(await coachToggle.isChecked())) {
-      await coachToggle.click();
-    }
+    // Verify selectSessionTasks returns tasks
+    const tasks = await page.evaluate(() => {
+      const storeData = window.store.get();
+      const profile = JSON.parse(localStorage.getItem('wmLabProfile') || 'null');
+      return window.selectSessionTasks(storeData, profile);
+    });
+    expect(tasks.length).toBeGreaterThanOrEqual(2);
+    expect(tasks[0]).toBe('filterPos'); // Always starts with warm-up
 
-    // Click coach session
+    // Verify coach mode is actually on
+    const isCoachOn = await page.evaluate(() => coachOn());
+    expect(isCoachOn).toBe(true);
+
+    // Click coach session button and verify the screen changes to a task
     const coachBtn = await page.locator('#coachSession');
     await coachBtn.click();
+    await page.waitForFunction(() => {
+      const screen = document.querySelector('#screen');
+      return screen && !screen.textContent.includes('Welcome');
+    }, { timeout: 5000 });
 
-    // The test would continue interacting with tasks...
-    // This is left as a skeleton for manual testing
+    // Debug: log any errors
+    if (errors.length > 0) console.log('Page errors:', errors);
+
+    // Screen should now show a task (not the launchpad)
+    const screenContent = await page.locator('#screen').textContent();
+    expect(screenContent).not.toContain('Welcome to Working Memory Lab');
+    expect(screenContent.length).toBeGreaterThan(10);
   });
 });

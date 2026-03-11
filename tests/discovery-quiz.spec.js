@@ -256,17 +256,18 @@ test.describe('Discovery Quiz Flow', () => {
       profileStore.set(profile);
     });
     
-    // Call viewProfile function
-    await page.evaluate(() => {
-      window.viewProfile();
+    // Call viewProfile and check screen content
+    const profileRendered = await page.evaluate(() => {
+      if (typeof viewProfile === 'function') {
+        viewProfile();
+        const screen = document.querySelector('#screen');
+        return screen && screen.textContent.includes('Profile');
+      }
+      return false;
     });
-    
-    // Check that profile is displayed in screen
-    const profileVisible = await page.locator('text=Your Profile').isVisible({ timeout: 2000 }).catch(() => false);
-    
-    // Profile view may or may not render depending on implementation
-    // This is a structural test
-    expect(typeof profileVisible).toBe('boolean');
+
+    // Profile view should render when profile data exists
+    expect(profileRendered).toBe(true);
   });
 
   test('quiz can be retaken', async ({ page }) => {
@@ -295,10 +296,9 @@ test.describe('Discovery Quiz Flow', () => {
       return null;
     });
     
-    // Retake may clear profile or set a flag
-    if (retakeResult !== null) {
-      expect(typeof retakeResult).toBe('boolean');
-    }
+    // retakeQuiz should exist and clear the profile
+    expect(retakeResult).not.toBeNull();
+    expect(retakeResult).toBe(true);
   });
 });
 

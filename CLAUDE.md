@@ -73,6 +73,12 @@ When `coachMode` is ON (`coachOn()` returns true):
 Tests use Playwright against file:// protocol. Test files are in `tests/`:
 - `smoke.spec.js` - App load and basic navigation
 - `core-tasks.spec.js` - WM Span, N-Back, Spatial+Verbal tasks
+- `coach-session.spec.js` - Coach mode toggle and guided session flow
+- `dashboard-analytics.spec.js` - Dashboard charts, streak calendar, domain scores
+- `discovery-quiz.spec.js` - Onboarding quiz, persona detection, profile view
+- `edge-cases.spec.js` - Error handling, localStorage limits, data corruption recovery
+- `persona-survey.spec.js` - Post-session persona validation survey triggers
+- `profile-retake.spec.js` - Profile retake flow and quiz restart
 - `pwa.spec.js` - PWA functionality
 - `pwa-analytics.spec.js` - Installation analytics tracking
 

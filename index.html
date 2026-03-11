@@ -66,7 +66,7 @@
   .hidden{display:none !important}
   .tight{margin:-4px 0 -2px}
   .switch{display:inline-flex; align-items:center; gap:8px}
-  .switch input{appearance:none; width:40px; height:22px; border-radius:999px; background:#2a3954; position:relative; outline:none; cursor:pointer; border:1px solid #31435f}
+  .switch input{appearance:none; width:40px; height:22px; border-radius:999px; background:#2a3954; position:relative; cursor:pointer; border:1px solid #31435f}
   .switch input:checked{background:#2f6a4f}
   .switch input::after{content:''; position:absolute; top:2px; left:2px; width:18px; height:18px; background:#dfe9ff; border-radius:50%; transition:transform .2s}
   .switch input:checked::after{transform:translateX(18px)}
@@ -94,6 +94,9 @@
   /* Session 8: Skip link for accessibility */
   .skip-link{position:absolute;top:-50px;left:16px;background:var(--brand);color:#000;padding:10px 16px;border-radius:8px;font-weight:600;z-index:999;text-decoration:none;transition:top .2s}
   .skip-link:focus{top:10px}
+  /* Focus-visible styles for keyboard navigation */
+  button:focus-visible,.btn:focus-visible,.pill:focus-visible,.chip:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+  .switch input:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
   /* Phase 4.2: Reduced motion support */
   @media(prefers-reduced-motion:reduce){
     *,*::before,*::after{animation-duration:0.01ms !important;animation-iteration-count:1 !important;transition-duration:0.01ms !important}
@@ -111,7 +114,7 @@
   body.high-contrast .braintok-card{border-width:2px}
   /* Phase 5: BrainTok swipeable cards */
   .braintok-container{position:relative; height:400px; width:100%; max-width:350px; margin:0 auto; perspective:1000px}
-  .braintok-card{position:absolute; top:0; left:0; right:0; height:100%; background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:24px; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; transition:transform .3s ease, opacity .3s ease; touch-action:pan-y; user-select:none; cursor:grab}
+  .braintok-card{position:absolute; top:0; left:0; right:0; height:100%; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:24px; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; transition:transform .3s ease, opacity .3s ease; touch-action:pan-y; user-select:none; cursor:grab}
   .braintok-card:active{cursor:grabbing}
   .braintok-card.swiping{transition:none}
   .braintok-card.swipe-left{transform:translateX(-120%) rotate(-15deg); opacity:0}
@@ -218,13 +221,18 @@ const SCHEMA_VERSION = 1;
 function Store(key, isArray = false) {
   this.key = key;
   this.isArray = isArray;
+  this._cache = undefined;
+  this._cacheRaw = undefined;
 }
 Store.prototype.get = function() {
+  const raw = localStorage.getItem(this.key);
+  if (this._cache !== undefined && raw === this._cacheRaw) return this._cache;
   try {
     const defaultValue = this.isArray ? '[]' : '{}';
-    const storedValue = localStorage.getItem(this.key);
-    if (this.key === 'wmLabProfile' && storedValue === 'null') return null;
-    return JSON.parse(storedValue || defaultValue);
+    if (this.key === 'wmLabProfile' && raw === 'null') return null;
+    this._cache = JSON.parse(raw || defaultValue);
+    this._cacheRaw = raw;
+    return this._cache;
   } catch (err) {
     console.warn(`[Store] Failed to parse ${this.key}:`, err);
     this.handleCorruptedData();
@@ -235,7 +243,11 @@ Store.prototype.set = function(data) {
   try {
     const serialized = JSON.stringify(data);
     localStorage.setItem(this.key, serialized);
+    this._cache = data;
+    this._cacheRaw = serialized;
   } catch (err) {
+    this._cache = undefined;
+    this._cacheRaw = undefined;
     if (err.name === 'QuotaExceededError') {
       this.handleQuotaExceeded();
     } else {
@@ -245,6 +257,8 @@ Store.prototype.set = function(data) {
   }
 };
 Store.prototype.handleQuotaExceeded = function() {
+  this._cache = undefined;
+  this._cacheRaw = undefined;
   toast('⚠️ Storage quota exceeded. Cleaning old data...', 'warn');
   const data = this.get();
   if (this.isArray) {
@@ -282,6 +296,8 @@ Store.prototype.handleCorruptedData = function() {
     }
   }
   localStorage.removeItem(this.key);
+  this._cache = undefined;
+  this._cacheRaw = undefined;
   toast('⚠️ Data corruption detected. Reset to defaults.', 'warn');
 };
 // Generic push method for array-based stores
@@ -342,6 +358,27 @@ function migrateSchema() {
 
 // Run migration on load
 migrateSchema();
+
+// Global error handlers -- recover gracefully from unhandled errors
+let _errorRecovering = false;
+function recoverFromError() {
+  if (_errorRecovering) return; // Prevent infinite recovery loop
+  _errorRecovering = true;
+  try {
+    if (typeof toast === 'function') toast('Something went wrong', 'err');
+    if (typeof drawLaunchpad === 'function') drawLaunchpad();
+  } finally {
+    _errorRecovering = false;
+  }
+}
+window.onerror = function(message, source, lineno, colno, error) {
+  console.error('[Global Error]', message, source, lineno, colno, error);
+  recoverFromError();
+};
+window.addEventListener('unhandledrejection', function(event) {
+  console.error('[Unhandled Promise Rejection]', event.reason);
+  recoverFromError();
+});
 
 // Personal best tracking helpers
 function getPersonalBest(taskKey, metric = 'bestLevel') {
@@ -536,20 +573,23 @@ function cancelResetConfirm() {
 
 // Expose key objects/functions for testing
 window.store = store;
-window.coachOn = undefined; // Will be defined later
+function coachOn(){ return !!prefs.get().coachMode; }
+window.coachOn = coachOn;
 
-// Generic push for array-based stores
-focusStore.push = function(entry) {
+// Array-based stores prepend entries (newest first) for chronological display
+focusStore.prepend = function(entry) {
     const data = this.get();
-    data.unshift(entry); // Add to the beginning
+    data.unshift(entry);
     this.set(data);
 };
+focusStore.push = focusStore.prepend; // Alias for backward compatibility
 
-realWorldStore.push = function(entry) {
+realWorldStore.prepend = function(entry) {
     const data = this.get();
-    data.unshift({ ...entry, ts: new Date().toISOString() }); // Add timestamp
+    data.unshift({ ...entry, ts: new Date().toISOString() });
     this.set(data);
 };
+realWorldStore.push = realWorldStore.prepend; // Alias for backward compatibility
 
 const prefs = {
   get(){ try{ return JSON.parse(localStorage.getItem('wmLabPrefs')||'{}'); }catch{ return {}; } },
@@ -560,9 +600,38 @@ $('#resetScores').onclick = showResetConfirm;
 $('#exportCsv').onclick = exportCsv;
 $('#exportJson').onclick = exportJson;
 
+/* ---------- Task Cleanup ---------- */
+const activeIntervals = [];
+let taskActive = false;
+let _activeKeyHandler = null;
+
+function trackInterval(id) {
+  activeIntervals.push(id);
+  return id;
+}
+
+function cleanupActiveTask() {
+  // Clear all tracked intervals
+  while (activeIntervals.length) clearInterval(activeIntervals.pop());
+  // Remove registered task keyboard handler
+  if (_activeKeyHandler) {
+    document.removeEventListener('keydown', _activeKeyHandler);
+    _activeKeyHandler = null;
+  }
+  // Cancel any in-progress speech synthesis
+  if ('speechSynthesis' in window) speechSynthesis.cancel();
+  // Clear BrainTok document-level handlers
+  document.onmousemove = null;
+  document.ontouchmove = null;
+  document.onmouseup = null;
+  document.ontouchend = null;
+  taskActive = false;
+}
+
 /* ---------- Tabs ---------- */
 document.querySelectorAll('[role="tab"]').forEach(tab=>{
   tab.onclick = () => {
+    cleanupActiveTask();
     document.querySelectorAll('[role="tab"]').forEach(t=>t.setAttribute('aria-selected','false'));
     tab.setAttribute('aria-selected','true');
     const t = tab.dataset.tab;
@@ -812,7 +881,7 @@ function drawFocus() {
       <h2 class="caps">Focus Mode</h2>
       <p class="muted">Set a timer, block distractions, and work. Your session will be logged.</p>
       <form id="focusForm" class="row">
-        <input id="focus-duration" type="number" value="25" min="5" max="120" step="5" style="width:80px;padding:8px;border-radius:8px;border:1px solid #31435f;background:#0f1720;color:var(--ink)">
+        <input id="focus-duration" type="number" value="25" min="5" max="120" step="5" aria-label="Focus session duration in minutes" style="width:80px;padding:8px;border-radius:8px;border:1px solid #31435f;background:#0f1720;color:var(--ink)">
         <label for="focus-duration" class="muted">minutes</label>
         <button class="primary" type="submit">Start Focus Session</button>
       </form>
@@ -840,7 +909,7 @@ function runFocusSession(minutes) {
   const timerDisplay = $('#focus-timer-display');
   timerDisplay.style.display = 'flex';
 
-  const timerInterval = setInterval(() => {
+  const timerInterval = trackInterval(setInterval(() => {
     const remaining = end - Date.now();
     if (remaining <= 0) {
       clearInterval(timerInterval);
@@ -855,7 +924,7 @@ function runFocusSession(minutes) {
     const remainingMinutes = Math.floor(remaining / 60000);
     const remainingSeconds = Math.floor((remaining % 60000) / 1000).toString().padStart(2, '0');
     timerDisplay.textContent = `${remainingMinutes}:${remainingSeconds}`;
-  }, 1000);
+  }, 1000));
 }
 
 function renderFocusHistory() {
@@ -883,11 +952,11 @@ function drawLifestyle() {
       <form id="lifestyleForm" class="stack">
         <div class="row">
           <label for="sleep" style="width:100px">Sleep (hours)</label>
-          <input type="number" id="sleep" step="0.5" min="0" max="16" value="${data.sleep || ''}" style="width:80px;padding:8px;border-radius:8px;border:1px solid #31435f;background:#0f1720;color:var(--ink)">
+          <input type="number" id="sleep" step="0.5" min="0" max="16" value="${data.sleep || ''}" aria-label="Hours of sleep" style="width:80px;padding:8px;border-radius:8px;border:1px solid #31435f;background:#0f1720;color:var(--ink)">
         </div>
         <div class="row">
           <label for="exercise" style="width:100px">Exercise (mins)</label>
-          <input type="number" id="exercise" step="5" min="0" max="240" value="${data.exercise || ''}" style="width:80px;padding:8px;border-radius:8px;border:1px solid #31435f;background:#0f1720;color:var(--ink)">
+          <input type="number" id="exercise" step="5" min="0" max="240" value="${data.exercise || ''}" aria-label="Minutes of exercise" style="width:80px;padding:8px;border-radius:8px;border:1px solid #31435f;background:#0f1720;color:var(--ink)">
         </div>
         <div class="row" style="align-items:center">
           <label style="width:100px">Stress Level</label>
@@ -1146,6 +1215,7 @@ function finishBrainTok() {
     </div>
   `;
 
+  store.push('braintok', { scoreStr: `${score}/${cards.length}`, score, total: cards.length, acc: pct, ts: new Date().toISOString() });
   toast(`BrainTok: ${score}/${cards.length} (${pct}%)`, pct >= 70 ? 'ok' : 'warn');
 }
 
@@ -1171,8 +1241,8 @@ function drawCrossModal(){
 async function initializeApp() {
   const profile = profileStore.get();
   if (profile && profile.onboardingComplete) {
-    // Returning user - apply personalization and show default view
-    applyPersonalization(profile);
+    // Returning user - apply personalization but don't override saved preferences
+    applyPersonalization(profile, false);
     const defaultTab = getDefaultTab(profile.persona);
     document.querySelector(`[data-tab="${defaultTab}"]`).click();
   } else {
@@ -1602,11 +1672,14 @@ async function showProfileSummary(profile) {
   await new Promise(resolve => { window.finishQuiz = resolve; });
 }
 
-function applyPersonalization(profile) {
+function applyPersonalization(profile, initial = true) {
   // Set Coach Mode based on persona
+  // On page reload (initial=false), only set if user hasn't explicitly chosen yet
   const p = prefs.get();
-  p.coachMode = profile.persona !== 'competitor'; // Competitors might prefer manual control
-  prefs.set(p);
+  if (initial || p.coachMode === undefined) {
+    p.coachMode = profile.persona !== 'competitor'; // Competitors might prefer manual control
+    prefs.set(p);
+  }
   if ($('#coachToggle')) $('#coachToggle').checked = p.coachMode;
 
   // Highlight recommended tasks
@@ -1770,7 +1843,7 @@ function showRetakeConfirm() {
 
   const cancelBtn = document.createElement('button');
   cancelBtn.textContent = 'Cancel';
-  cancelBtn.onclick = drawProfile;
+  cancelBtn.onclick = viewProfile;
 
   btnContainer.appendChild(confirmBtn);
   btnContainer.appendChild(cancelBtn);
@@ -1789,42 +1862,13 @@ function retakeQuiz() {
 }
 
 /* ---------- Scores sidebar ---------- */
-function renderScores(){
-  const s = store.get();
-  const box = $('#scores');
-  const keyMeta = { span:'WM Span', spatial:'Spatial+Verbal', crossmodal:'Cross-modal', nback:'N-Back', dualNback:'Dual N-Back', corsi:'Corsi Blocks', filterPos:'Filter Positive', mult:'Mental Mult' };
-  const fmt = new Intl.DateTimeFormat([], {month:'short', day:'2-digit', hour:'2-digit', minute:'2-digit'});
-  box.innerHTML = '';
-  let hasScores = false;
-  Object.keys(keyMeta).forEach(k=>{
-    const rows = (s[k]||[]).slice(-5).reverse();
-    if (!rows.length) return;
-    hasScores = true;
-    const wrap = document.createElement('div');
-    wrap.className = 'stack';
-    wrap.innerHTML = `<div class="caps">${keyMeta[k]}</div>`;
-    rows.forEach(r=>{
-      const div = document.createElement('div');
-      div.className = 'scoreline mono';
-      const left = r.label ?? (r.level ? `L${r.level}` : '');
-      const score = (r.scoreStr ?? r.correct??'') + (r.extra ? ` ${r.extra}`:'');
-      div.innerHTML = `<span>${left}</span><span>${score} · ${fmt.format(new Date(r.ts))}</span>`;
-      wrap.appendChild(div);
-    });
-    box.appendChild(wrap);
-  });
-  if (!hasScores) {
-    box.innerHTML = '<div class="empty-state muted">Complete a task to see your scores here</div>';
-  }
-}
+function renderScores(){ renderScoresPaginated(1, 10); }
 renderScores();
 
 /* ---------- Coach Mode persistence ---------- */
 const coachToggle = $('#coachToggle');
 coachToggle.checked = !!prefs.get().coachMode;
 coachToggle.onchange = ()=>{ const p=prefs.get(); p.coachMode=coachToggle.checked; prefs.set(p); toast(`Coach Mode ${coachOn()?'ON':'OFF'}`); };
-function coachOn(){ return !!prefs.get().coachMode; }
-window.coachOn = coachOn; // Expose for testing
 $('#coachSession').onclick = runCoachSession;
 
 /* ---------- High Contrast Mode persistence ---------- */
@@ -1854,42 +1898,42 @@ function openSettings() {
 
         <div class="row" title="Reduce display time for faster pace">
           <label class="switch">
-            <input id="fastTempoToggle" type="checkbox" ${p.fastTempo ? 'checked' : ''}>
+            <input id="fastTempoToggle" type="checkbox" ${p.fastTempo ? 'checked' : ''} aria-label="Fast Tempo">
           </label>
           <div><b>Fast Tempo</b> <span class="muted">quicker display times</span></div>
         </div>
 
         <div class="row" title="Show countdown timer during recall">
           <label class="switch">
-            <input id="timePressureToggle" type="checkbox" ${p.timePressure ? 'checked' : ''}>
+            <input id="timePressureToggle" type="checkbox" ${p.timePressure ? 'checked' : ''} aria-label="Time Pressure">
           </label>
           <div><b>Time Pressure</b> <span class="muted">countdown during recall</span></div>
         </div>
 
         <div class="row" title="Use digits (0-9) instead of words in WM Span">
           <label class="switch">
-            <input id="digitModeToggle" type="checkbox" ${p.digitMode ? 'checked' : ''}>
+            <input id="digitModeToggle" type="checkbox" ${p.digitMode ? 'checked' : ''} aria-label="Digit Mode">
           </label>
           <div><b>Digit Mode</b> <span class="muted">numbers for WM Span</span></div>
         </div>
 
         <div class="row" title="Speak color names during Cross-modal Binding">
           <label class="switch">
-            <input id="audioCuesToggle" type="checkbox" ${p.audioCues ? 'checked' : ''}>
+            <input id="audioCuesToggle" type="checkbox" ${p.audioCues ? 'checked' : ''} aria-label="Audio Cues">
           </label>
           <div><b>Audio Cues</b> <span class="muted">speak colors in Cross-modal</span></div>
         </div>
 
         <div class="row" title="30-second time limit for Filter the Positive">
           <label class="switch">
-            <input id="countdownModeToggle" type="checkbox" ${p.countdownMode ? 'checked' : ''}>
+            <input id="countdownModeToggle" type="checkbox" ${p.countdownMode ? 'checked' : ''} aria-label="Countdown Mode">
           </label>
           <div><b>Countdown Mode</b> <span class="muted">30s limit for Filter</span></div>
         </div>
 
         <div class="row" title="Use addition instead of multiplication">
           <label class="switch">
-            <input id="additionModeToggle" type="checkbox" ${p.additionMode ? 'checked' : ''}>
+            <input id="additionModeToggle" type="checkbox" ${p.additionMode ? 'checked' : ''} aria-label="Addition Mode">
           </label>
           <div><b>Addition Mode</b> <span class="muted">add instead of multiply</span></div>
         </div>
@@ -1933,14 +1977,14 @@ function openSettings() {
 
         <div class="row" title="Adaptive difficulty across tasks">
           <label class="switch">
-            <input id="settingsCoachToggle" type="checkbox" ${p.coachMode ? 'checked' : ''}>
+            <input id="settingsCoachToggle" type="checkbox" ${p.coachMode ? 'checked' : ''} aria-label="Coach Mode">
           </label>
           <div><b>Coach Mode</b> <span class="muted">adaptive session</span></div>
         </div>
 
         <div class="row" title="High contrast colors for accessibility">
           <label class="switch">
-            <input id="settingsContrastToggle" type="checkbox" ${p.highContrast ? 'checked' : ''}>
+            <input id="settingsContrastToggle" type="checkbox" ${p.highContrast ? 'checked' : ''} aria-label="High Contrast">
           </label>
           <div><b>High Contrast</b> <span class="muted">accessibility</span></div>
         </div>
@@ -2081,6 +2125,11 @@ function clearAllData() {
   localStorage.removeItem('wmLab');
   localStorage.removeItem('wmLabPrefs');
   localStorage.removeItem('wmLabProfile');
+  localStorage.removeItem('wmLabFocus');
+  localStorage.removeItem('wmLabLifestyle');
+  localStorage.removeItem('wmLabRealWorld');
+  localStorage.removeItem('wmLabPWAAnalytics');
+  localStorage.removeItem('wmLabPWA');
   toast('All data cleared', 'ok');
   location.reload();
 }
@@ -2157,18 +2206,17 @@ const colorNames = {
 
 /* ---------- Launch actions ---------- */
 let lastTask = null; // Track last task for R key retry
+const taskRunners = {
+  span: runSpan, spatial: runSpatial, crossmodal: runCrossModal,
+  nback: runNBack, dualNback: runDualNBack, audioNback: runAudioNBack,
+  corsi: runCorsi, opSpan: runOpSpan, filterPos: runFilterPos, mult: runMult
+};
 function runTask(mode) {
+  cleanupActiveTask();
+  taskActive = true;
   lastTask = mode;
-  if (mode==='span') runSpan();
-  if (mode==='spatial') runSpatial();
-  if (mode==='crossmodal') runCrossModal();
-  if (mode==='nback') runNBack();
-  if (mode==='dualNback') runDualNBack();
-  if (mode==='audioNback') runAudioNBack();
-  if (mode==='corsi') runCorsi();
-  if (mode==='opSpan') runOpSpan();
-  if (mode==='filterPos') runFilterPos();
-  if (mode==='mult') runMult();
+  const runner = taskRunners[mode];
+  if (runner) runner();
 }
 document.querySelectorAll('[data-run]').forEach(b=>{
   b.onclick = () => runTask(b.dataset.run);
@@ -2306,11 +2354,11 @@ function spanTrial(level, words, doSave = true){
       <div class="stack">
         <h2>WM Span – Level ${level}</h2>
         <div class="muted">Remember these words. Then type them <b>in reverse order</b>.</div>
-        <div id="show" class="big center" style="min-height:80px"></div>
-        ${useTimer ? `<div id="timer" class="muted center" style="font-size:1.5rem;color:var(--warn)"></div>` : ''}
+        <div id="show" class="big center" aria-live="polite" style="min-height:80px"></div>
+        ${useTimer ? `<div id="timer" class="muted center" aria-live="assertive" style="font-size:1.5rem;color:var(--warn)"></div>` : ''}
         <div class="sep"></div>
         <form id="f" class="row">
-          <input id="ans" class="mono" placeholder="type reversed list (comma/space ok)" style="flex:1;padding:10px;border-radius:8px;border:1px solid #31435f;background:#0f1720;color:var(--ink)" />
+          <input id="ans" class="mono" placeholder="type reversed list (comma/space ok)" aria-label="Type remembered words in reverse order" style="flex:1;padding:10px;border-radius:8px;border:1px solid #31435f;background:#0f1720;color:var(--ink)" />
           <button class="primary" type="submit">Submit</button>
         </form>
       </div>`;
@@ -2323,7 +2371,7 @@ function spanTrial(level, words, doSave = true){
     if (useTimer) {
       const timerEl = $('#timer');
       timerEl.textContent = `⏱️ ${timeRemaining}s`;
-      timerInterval = setInterval(() => {
+      timerInterval = trackInterval(setInterval(() => {
         timeRemaining--;
         timerEl.textContent = `⏱️ ${timeRemaining}s`;
         if (timeRemaining <= 3) timerEl.style.color = 'var(--err)';
@@ -2331,7 +2379,7 @@ function spanTrial(level, words, doSave = true){
           clearInterval(timerInterval);
           $('#f').dispatchEvent(new Event('submit', { cancelable: true }));
         }
-      }, 1000);
+      }, 1000));
     }
 
     $('#f').onsubmit = (e)=>{
@@ -2435,16 +2483,16 @@ function spatialLevel(level, doSave = true){
       let timeRemaining = timeLimit;
       timerEl.style.display = 'block';
       timerEl.textContent = `⏱️ ${timeRemaining}s`;
-      recallInterval = setInterval(() => {
+      recallInterval = trackInterval(setInterval(() => {
         timeRemaining--;
         timerEl.textContent = `⏱️ ${timeRemaining}s`;
         if (timeRemaining <= 3) timerEl.style.color = 'var(--err)';
         if (timeRemaining <= 0) {
           clearInterval(recallInterval);
-          if(doSave) phase.innerHTML = `<span class="err">Time's up!</span>`;
+          if(doSave) phase.innerHTML = '<span class="err">Time\'s up!</span>';
           setTimeout(()=>resolve({passed: false, verbalTotal: seq.length, verbalCorrect: respOk, spatialOk: false}), 900);
         }
-      }, 1000);
+      }, 1000));
     }
 
     tris.forEach(t=>{ t.classList.remove('mark','wrong','correct'); t.onclick = ()=>{
@@ -2548,16 +2596,16 @@ function crossModalLevel(level){
       let timeRemaining = timeLimit;
       timerEl.style.display = 'block';
       timerEl.textContent = `⏱️ ${timeRemaining}s`;
-      recallInterval = setInterval(() => {
+      recallInterval = trackInterval(setInterval(() => {
         timeRemaining--;
         timerEl.textContent = `⏱️ ${timeRemaining}s`;
         if (timeRemaining <= 3) timerEl.style.color = 'var(--err)';
         if (timeRemaining <= 0) {
           clearInterval(recallInterval);
-          phase.innerHTML = `<span class="err">Time's up!</span>`;
+          phase.innerHTML = '<span class="err">Time\'s up!</span>';
           setTimeout(()=>resolve(false), 900);
         }
-      }, 1000);
+      }, 1000));
     }
 
     document.querySelectorAll('#recall-grid .shape').forEach(el => {
@@ -2684,7 +2732,7 @@ async function blockN(n, secs=60, doSave = true){
       <div class="stack">
         <h2>N-Back (${n}-back) – ${secs}s</h2>
         <div class="muted">Press <span class="kbd">Space</span> when current word matches the word ${n} back.</div>
-        <div class="center big" style="height:80px"><span id="stim">+</span></div>
+        <div class="center big" style="height:80px"><span id="stim" aria-live="polite">+</span></div>
         <div class="row center">
           <div>Hits: <b id="hits">0</b></div>
           <div>Misses: <b id="miss">0</b></div>
@@ -2701,9 +2749,9 @@ async function blockN(n, secs=60, doSave = true){
     const rtData = [];
 
     if (doSave) {
-        timerInterval = setInterval(()=>{ const left=parseInt(timerEl.textContent,10)-1; timerEl.textContent=left; if (left<=0){ clearInterval(timerInterval); document.onkeydown=null; finish();}},1000);
+        timerInterval = trackInterval(setInterval(()=>{ const left=parseInt(timerEl.textContent,10)-1; timerEl.textContent=left; if (left<=0){ clearInterval(timerInterval); finish();}},1000));
     }
-    document.onkeydown=(e)=>{
+    const nbackKeyHandler = (e)=>{
       if (e.code==='Space'&&canPress){
         const rt = performance.now() - stimStart;
         const target=(i>=n)&&(stream[i]===stream[i-n]);
@@ -2717,6 +2765,8 @@ async function blockN(n, secs=60, doSave = true){
         if(doSave){$('#hits').textContent=hits; $('#fa').textContent=fa;}
       }
     };
+    _activeKeyHandler = nbackKeyHandler;
+    document.addEventListener('keydown', nbackKeyHandler);
     const stimTime = prefs.get().fastTempo ? 900 : 1300;
     async function step(){
       if (i>=stream.length || (doSave && parseInt(timerEl.textContent,10) <= 0)){ finish(); return; }
@@ -2729,7 +2779,7 @@ async function blockN(n, secs=60, doSave = true){
     }
     step();
     function finish(){
-        if(doSave) document.onkeydown=null;
+        if(doSave) { document.removeEventListener('keydown', nbackKeyHandler); _activeKeyHandler = null; }
         if(timerInterval) clearInterval(timerInterval);
         const avgRt = rtData.length > 0 ? Math.round(rtData.reduce((a,b)=>a+b,0) / rtData.length) : null;
         resolve({hits,miss,fa,totalTargets:stream.filter((w,idx)=>idx>=n&&w===stream[idx-n]).length,avgRt});
@@ -2866,11 +2916,11 @@ async function dualNBackBlock(n, secs) {
     let idx = 0, posHits = 0, posMiss = 0, posFA = 0, audioHits = 0, audioMiss = 0, audioFA = 0;
     let canPressPos = true, canPressAudio = true;
 
-    const timerInterval = setInterval(() => {
+    const timerInterval = trackInterval(setInterval(() => {
       const left = parseInt(timerEl.textContent, 10) - 1;
       timerEl.textContent = left;
       if (left <= 0) { clearInterval(timerInterval); cleanup(); finish(); }
-    }, 1000);
+    }, 1000));
 
     function speakLetter(letter) {
       if ('speechSynthesis' in window) {
@@ -3076,7 +3126,7 @@ async function audioNBackBlock(n, trials) {
       }
     }
 
-    document.onkeydown = (e) => {
+    const audioNbackKeyHandler = (e) => {
       if (e.code === 'Space' && canPress) {
         const rt = performance.now() - stimStart;
         const target = (i >= n) && (stream[i] === stream[i - n]);
@@ -3092,6 +3142,8 @@ async function audioNBackBlock(n, trials) {
         e.preventDefault();
       }
     };
+    _activeKeyHandler = audioNbackKeyHandler;
+    document.addEventListener('keydown', audioNbackKeyHandler);
 
     const responseTime = prefs.get().fastTempo ? 800 : 1200;
     async function step() {
@@ -3121,7 +3173,8 @@ async function audioNBackBlock(n, trials) {
     step();
 
     function finish() {
-      document.onkeydown = null;
+      document.removeEventListener('keydown', audioNbackKeyHandler);
+      _activeKeyHandler = null;
       speechSynthesis.cancel();
       const totalTargets = stream.filter((l, idx) => idx >= n && l === stream[idx - n]).length;
       const avgRt = rtData.length > 0 ? Math.round(rtData.reduce((a,b)=>a+b,0) / rtData.length) : null;
@@ -3237,7 +3290,7 @@ async function corsiLevel(seqLen) {
 
       let timeRemaining = timeLimit;
       timerEl.textContent = `⏱️ ${timeRemaining}s`;
-      timerInterval = setInterval(() => {
+      timerInterval = trackInterval(setInterval(() => {
         timeRemaining--;
         timerEl.textContent = `⏱️ ${timeRemaining}s`;
         if (timeRemaining <= 3) timerEl.style.color = 'var(--err)';
@@ -3248,7 +3301,7 @@ async function corsiLevel(seqLen) {
           feedback.style.color = 'var(--err)';
           setTimeout(() => resolve(false), 800);
         }
-      }, 1000);
+      }, 1000));
     }
 
     const handleClick = (e) => {
@@ -3537,7 +3590,7 @@ async function showOpSpanRecall(letters, setSize) {
     if (useTimer) {
       let timeRemaining = timeLimit;
       timerEl.textContent = `⏱️ ${timeRemaining}s`;
-      timerInterval = setInterval(() => {
+      timerInterval = trackInterval(setInterval(() => {
         timeRemaining--;
         timerEl.textContent = `⏱️ ${timeRemaining}s`;
         if (timeRemaining <= 3) timerEl.style.color = 'var(--err)';
@@ -3550,7 +3603,7 @@ async function showOpSpanRecall(letters, setSize) {
           }
           resolve({ correct, total: letters.length });
         }
-      }, 1000);
+      }, 1000));
     }
 
     function updateRecallDisplay() {
@@ -3765,7 +3818,7 @@ async function runMult(){
       <div id="q" class="big mono"></div>
       ${useTimer ? `<div id="timer" class="muted center" style="font-size:1.5rem;color:var(--warn)"></div>` : ''}
       <form id="f" class="row">
-        <input id="a" class="mono" placeholder="answer" style="flex:1;padding:10px;border-radius:8px;border:1px solid #31435f;background:#0f1720;color:var(--ink)" />
+        <input id="a" class="mono" placeholder="answer" aria-label="Type your answer" style="flex:1;padding:10px;border-radius:8px;border:1px solid #31435f;background:#0f1720;color:var(--ink)" />
         <button class="primary">Submit</button>
       </form>
       <div id="res" class="muted"></div>
@@ -3818,18 +3871,18 @@ async function runMult(){
         let timeRemaining = timePerProblem;
         timerEl.textContent = `⏱️ ${timeRemaining}s`;
         timerEl.style.color = 'var(--warn)';
-        timerInterval = setInterval(() => {
+        timerInterval = trackInterval(setInterval(() => {
           timeRemaining--;
           timerEl.textContent = `⏱️ ${timeRemaining}s`;
           if (timeRemaining <= 3) timerEl.style.color = 'var(--err)';
           if (timeRemaining <= 0) {
             clearInterval(timerInterval);
             timerInterval = null;
-            res.innerHTML = `<span class="err">Time's up!</span> <span class="muted">→ ${getAnswer(problems[idx])}</span>`;
+            res.innerHTML = '<span class="err">Time\'s up!</span> <span class="muted">\u2192 ' + getAnswer(problems[idx]) + '</span>';
             idx++; a.value='';
             setTimeout(show, 800);
           }
-        }, 1000);
+        }, 1000));
       }
   }
 
@@ -4011,7 +4064,7 @@ function calculateWeeklyStats(storeData) {
   const lastWeekEnd = new Date(thisWeekStart);
 
   const allSessions = Object.entries(storeData).flatMap(([key, arr]) =>
-    (arr || []).map(r => {
+    (Array.isArray(arr) ? arr : []).map(r => {
       let score = null;
       if (key === 'span') score = ((r.bestLevel ?? r.level ?? 1) / 6) * 100;
       else if (key === 'nback') score = r.acc2 ?? r.acc1 ?? parseNAcc(r.scoreStr);
@@ -4313,8 +4366,8 @@ function openRealWorldModal() {
     <div class="card" style="max-width:500px; width:90%; margin:20px">
       <h2 class="caps">Log a Real-World Win 🌟</h2>
       <p class="muted">Record a moment when you noticed your working memory helping you in daily life.</p>
-      <textarea id="winNote" placeholder="Example: Remembered everyone's name at the meeting without taking notes..." 
-                maxlength="280" rows="4" 
+      <textarea id="winNote" placeholder="Example: Remembered everyone's name at the meeting without taking notes..."
+                maxlength="280" rows="4" aria-label="Describe your real-world win"
                 style="width:100%; padding:12px; border-radius:8px; border:1px solid var(--line); background:var(--bg); color:var(--ink); font-family:inherit; resize:vertical"></textarea>
       <div class="muted" style="font-size:12px; margin-top:4px"><span id="charCount">0</span>/280 characters</div>
       <div class="row" style="margin-top:16px">
@@ -4962,9 +5015,10 @@ function animateNumber(element, startVal, endVal, duration = 600, suffix = '') {
 
 // Task completion screen with action buttons
 function showTaskComplete(taskName, resultHtml, retryFn) {
+  taskActive = false;
   return new Promise(resolve => {
     screen.innerHTML = `
-      <div class="stack task-success" style="text-align:center; max-width:400px; margin:auto; padding-top:40px">
+      <div class="stack task-success" aria-live="polite" style="text-align:center; max-width:400px; margin:auto; padding-top:40px">
         <div style="font-size:48px; margin-bottom:16px">✓</div>
         <h2 class="caps">${taskName} Complete</h2>
         <div class="card" style="margin:16px 0">
@@ -5048,7 +5102,7 @@ window.addEventListener('appinstalled', () => {
 function showInstallButton() {
   // Add install button to launchpad if not already present
   const launchpad = $('#screen');
-  if (launchpad && launchpad.innerHTML.includes('Launchpad')) {
+  if (launchpad && launchpad.innerHTML.includes('Working Memory Lab')) {
     // Check if install button already exists
     if (!launchpad.querySelector('#installPWA')) {
       const installBtn = document.createElement('button');
@@ -5304,7 +5358,9 @@ if (isRunningAsPWA()) {
 document.addEventListener('keydown', (e) => {
   // Skip if typing in input/textarea
   if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
-  
+  // Skip most shortcuts while a task is active (allow Escape to exit)
+  if (taskActive && e.key !== 'Escape') return;
+
   // Tab navigation (1-5 keys)
   if (e.key >= '1' && e.key <= '5' && !e.ctrlKey && !e.metaKey) {
     const tabs = document.querySelectorAll('[role="tab"]');
@@ -5330,8 +5386,8 @@ document.addEventListener('keydown', (e) => {
     e.preventDefault();
   }
 
-  // C key - start Coach Session (only when on launchpad)
-  if (e.key.toLowerCase() === 'c' && !e.ctrlKey && !e.metaKey) {
+  // Shift+C - start Coach Session (only when on launchpad)
+  if (e.key === 'C' && e.shiftKey && !e.ctrlKey && !e.metaKey) {
     const launchpadTab = document.querySelector('[data-tab="launchpad"]');
     if (launchpadTab && launchpadTab.getAttribute('aria-selected') === 'true') {
       runCoachSession();
@@ -5396,7 +5452,7 @@ function showKeyboardShortcuts() {
         <span>Show this help</span>
       </div>
       <div style="display: flex; justify-content: space-between">
-        <span><kbd class="kbd">C</kbd></span>
+        <span><kbd class="kbd">Shift</kbd>+<kbd class="kbd">C</kbd></span>
         <span>Start Coach Session</span>
       </div>
       <div style="display: flex; justify-content: space-between">
@@ -5593,10 +5649,15 @@ function renderScoresPaginated(page = 1, perPage = 10) {
   const keyMeta = {
     span: 'WM Span',
     nback: 'N-Back',
+    dualNback: 'Dual N-Back',
+    audioNback: 'Audio N-Back',
     spatial: 'Spatial+Verbal',
     crossmodal: 'Cross-modal',
     filterPos: 'Filter Positive',
-    mult: 'Mental Mult'
+    mult: 'Mental Mult',
+    corsi: 'Corsi Blocks',
+    opSpan: 'Operation Span',
+    braintok: 'BrainTok'
   };
   
   const fmt = new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
@@ -5624,11 +5685,6 @@ function renderScoresPaginated(page = 1, perPage = 10) {
   scores.innerHTML = html;
 }
 
-// Replace original renderScores with paginated version
-window.renderScores = function() {
-  renderScoresPaginated(1, 10);
-};
-
 // Expose functions for testing
 window.openPersonaValidationSurvey = openPersonaValidationSurvey;
 window.checkPersonaSurveyTrigger = checkPersonaSurveyTrigger;
@@ -5636,9 +5692,6 @@ window.store = store;
 window.determinePersona = determinePersona;
 window.getRecommendations = getRecommendations;
 
-console.log('[Performance] Optimizations loaded: caching, pagination, lazy loading');
-console.log('[Accessibility] Enhanced: ARIA labels, keyboard nav, screen reader support');
-console.log('[Error Handling] Improved: quota management, data corruption recovery');
 
 </script>
 </body>

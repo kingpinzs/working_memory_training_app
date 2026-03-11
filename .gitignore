@@ -19,6 +19,12 @@ node_modules/
 .DS_Store
 Thumbs.db
 
+# Dev utility pages
+add-lifestyle-data.html
+add-sample-data.html
+test-sprint2.html
+test-sprint3.html
+
 # Logs
 *.log
 npm-debug.log*

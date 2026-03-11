@@ -116,8 +116,7 @@ test.describe('PWA Analytics Tracking', () => {
   });
 });
 
-// TODO: Tab content switch not working properly in test environment - needs debugging
-test.describe.skip('PWA Analytics Dashboard', () => {
+test.describe('PWA Analytics Dashboard', () => {
   const indexPath = 'file://' + path.resolve(__dirname, '../index.html');
 
   test.beforeEach(async ({ page }) => {
@@ -231,89 +230,38 @@ test.describe.skip('PWA Analytics Dashboard', () => {
 test.describe('PWA Install Button', () => {
   const indexPath = 'file://' + path.resolve(__dirname, '../index.html');
 
-  test.skip('install button appears when prompt is available', async ({ page }) => {
-    // Skipping: This test times out with file:// protocol
-    // The test would pass in a proper http:// server environment
-    // Simulate install prompt availability
+  test('install button appears when showInstallButton is called on launchpad', async ({ page }) => {
+    await page.goto(indexPath);
+    await page.click('[data-tab="launchpad"]');
+
+    // Simulate a deferred prompt so showInstallButton adds the button
     await page.evaluate(() => {
-      // Trigger the showInstallButton function manually
-      window.showInstallButton = () => {
-        const launchpad = document.querySelector('#screen');
-        if (launchpad && launchpad.innerHTML.includes('Launchpad')) {
-          if (!launchpad.querySelector('#installPWA')) {
-            const installBtn = document.createElement('button');
-            installBtn.id = 'installPWA';
-            installBtn.className = 'primary';
-            installBtn.innerHTML = '📱 Install App';
-            installBtn.onclick = () => {};
-            
-            const buttonContainer = launchpad.querySelector('.button-grid') || launchpad.querySelector('div');
-            if (buttonContainer) {
-              buttonContainer.appendChild(installBtn);
-            }
-          }
-        }
-      };
-      
+      window.deferredPrompt = { prompt() {}, userChoice: Promise.resolve({ outcome: 'dismissed' }) };
       window.showInstallButton();
     });
-    
-    await page.click('[data-tab="launchpad"]');
-    
-    // Check if install button is present
-    const installBtn = await page.locator('#installPWA');
-    const isVisible = await installBtn.isVisible();
-    
-    // Button may or may not be visible depending on timing
-    expect(isVisible || true).toBe(true); // Test passes either way
+
+    const installBtn = page.locator('#installPWA');
+    await expect(installBtn).toBeVisible();
+    await expect(installBtn).toHaveAttribute('aria-label', 'Install Progressive Web App');
   });
 
-  test.skip('install button tracks click events', async ({ page }) => {
-    // Skipping: This test has security issues with file:// protocol and localStorage
-    // The test would pass in a proper http:// server environment
-    // Set up analytics and install button
+  test('triggerInstall tracks analytics when no deferred prompt', async ({ page }) => {
+    await page.goto(indexPath);
+
+    // Clear analytics, ensure no deferred prompt
     await page.evaluate(() => {
       localStorage.setItem('wmLabPWAAnalytics', JSON.stringify([]));
-      
-      // Add install button manually
-      const launchpad = document.querySelector('#screen');
-      if (launchpad) {
-        const installBtn = document.createElement('button');
-        installBtn.id = 'installPWA';
-        installBtn.className = 'primary';
-        installBtn.innerHTML = '📱 Install App';
-        installBtn.onclick = () => {
-          // Track click
-          const analytics = JSON.parse(localStorage.getItem('wmLabPWAAnalytics') || '[]');
-          analytics.push({
-            event: 'install_button_clicked',
-            timestamp: new Date().toISOString()
-          });
-          localStorage.setItem('wmLabPWAAnalytics', JSON.stringify(analytics));
-        };
-        
-        const buttonContainer = launchpad.querySelector('.button-grid') || launchpad.querySelector('div');
-        if (buttonContainer) {
-          buttonContainer.appendChild(installBtn);
-        }
-      }
+      window.deferredPrompt = null;
     });
-    
-    await page.click('[data-tab="launchpad"]');
-    
-    // Click install button
-    const installBtn = await page.locator('#installPWA');
-    if (await installBtn.isVisible()) {
-      await installBtn.click();
-      
-      // Verify click was tracked
-      const analytics = await page.evaluate(() => {
-        const data = localStorage.getItem('wmLabPWAAnalytics');
-        return data ? JSON.parse(data) : [];
-      });
-      
-      const clicks = analytics.filter(event => event.event === 'install_button_clicked');
-      expect(clicks.length).toBeGreaterThan(0);
-    }
+
+    // Call triggerInstall — should toast "Install prompt not available" without crashing
+    await page.evaluate(() => window.triggerInstall());
+
+    // Analytics should still be empty (no prompt to track)
+    const analytics = await page.evaluate(() =>
+      JSON.parse(localStorage.getItem('wmLabPWAAnalytics') || '[]')
+    );
+    const prompted = analytics.filter(e => e.event === 'install_prompt_shown');
+    expect(prompted.length).toBe(0);
   });
 });
