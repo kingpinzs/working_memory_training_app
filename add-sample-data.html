@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Sample Data</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 700px;
+            margin: 60px auto;
+            padding: 30px;
+            background: #0b0f14;
+            color: #e8f0ff;
+        }
+        .container {
+            background: #121822;
+            border-radius: 16px;
+            padding: 32px;
+            border: 1px solid #243043;
+        }
+        h1 { color: #6ad3ff; margin-top: 0; }
+        .status {
+            padding: 16px;
+            margin: 20px 0;
+            border-radius: 12px;
+            background: #0f1522;
+            border: 1px solid #243043;
+        }
+        .success {
+            background: #1a3d2e;
+            border-color: #2bb673;
+            color: #7cf6a4;
+        }
+        button {
+            background: #1e2a42;
+            color: #e8f0ff;
+            border: 1px solid #31435f;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 8px 8px 8px 0;
+        }
+        button:hover {
+            background: #26405e;
+        }
+        .stats {
+            margin: 16px 0;
+            padding: 16px;
+            background: #0d1420;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        .stats div {
+            margin: 6px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 Add Sample Data</h1>
+        <p>This will populate your app with realistic test data for Sprint 3 testing.</p>
+        
+        <div id="status" class="status">
+            <strong>Ready to add sample data</strong>
+            <p style="margin: 8px 0 0 0; color: #9db0cc;">
+                This will add ~30 task sessions across all domains, 7 real-world wins, and a test profile.
+            </p>
+        </div>
+
+        <button onclick="addSampleData()">➕ Add Sample Data</button>
+        <button onclick="location.href='index.html'">🏠 Go to App</button>
+        <button onclick="location.href='test-sprint3.html'">🧪 Go to Test Suite</button>
+
+        <div id="stats" style="display: none;" class="stats"></div>
+    </div>
+
+    <script>
+        function addSampleData() {
+            const statusDiv = document.getElementById('status');
+            const statsDiv = document.getElementById('stats');
+            
+            try {
+                // Add sample task performance
+                const wmLab = JSON.parse(localStorage.getItem('wmLab') || '{}');
+                const now = Date.now();
+                
+                // Add N-Back sessions (attention domain) - spread over 15 days
+                wmLab.nback = wmLab.nback || [];
+                for (let i = 0; i < 8; i++) {
+                    wmLab.nback.push({
+                        type: 'nback',
+                        scoreStr: `1-back H/M/FA ${10+i}/${Math.max(2-Math.floor(i/2),0)}/1 · 2-back ${12+i}/${Math.max(3-Math.floor(i/2),0)}/2`,
+                        acc1: 75 + i * 3,
+                        acc2: 65 + i * 4,
+                        fa1: Math.max(2 - Math.floor(i/2), 0),
+                        fa2: Math.max(3 - Math.floor(i/2), 0),
+                        ts: new Date(now - (86400000 * (15 - i))).toISOString()
+                    });
+                }
+
+                // Add Span sessions (verbal domain) - spread over 14 days
+                wmLab.span = wmLab.span || [];
+                for (let i = 0; i < 7; i++) {
+                    wmLab.span.push({
+                        type: 'span',
+                        scoreStr: `Best L${3 + Math.floor(i/2)}`,
+                        bestLevel: 3 + Math.floor(i/2),
+                        ts: new Date(now - (86400000 * (14 - i))).toISOString()
+                    });
+                }
+
+                // Add Spatial sessions (spatial domain) - spread over 13 days
+                wmLab.spatial = wmLab.spatial || [];
+                for (let i = 0; i < 6; i++) {
+                    wmLab.spatial.push({
+                        type: 'spatial',
+                        scoreStr: `${Math.min(1 + i, 3)}/3`,
+                        cleared: Math.min(1 + i, 3),
+                        level: Math.min(1 + i, 3),
+                        ts: new Date(now - (86400000 * (13 - i))).toISOString()
+                    });
+                }
+
+                // Add Filter Positive sessions (attention domain) - spread over 12 days
+                wmLab.filterPos = wmLab.filterPos || [];
+                for (let i = 0; i < 5; i++) {
+                    wmLab.filterPos.push({
+                        type: 'filterPos',
+                        scoreStr: `${12 + i}/16 in ${25 - i}.${2 + i}s`,
+                        acc: ((12 + i) / 16 * 100).toFixed(1),
+                        time: 25 - i + (2 + i) / 10,
+                        ts: new Date(now - (86400000 * (12 - i))).toISOString()
+                    });
+                }
+
+                // Add Mental Mult sessions (verbal domain) - spread over 11 days
+                wmLab.mult = wmLab.mult || [];
+                for (let i = 0; i < 4; i++) {
+                    wmLab.mult.push({
+                        type: 'mult',
+                        scoreStr: `${4 + i}/6`,
+                        acc: ((4 + i) / 6 * 100).toFixed(1),
+                        ts: new Date(now - (86400000 * (11 - i))).toISOString()
+                    });
+                }
+
+                localStorage.setItem('wmLab', JSON.stringify(wmLab));
+
+                // Add sample real-world wins - spread over 8 days
+                const wins = [
+                    "Remembered everyone's name at the team meeting without taking notes! 🎯",
+                    "Did mental math for the tip at dinner - calculated 18% of $67 in my head perfectly",
+                    "Followed complex driving directions without GPS - remembered all 7 turns and landmarks",
+                    "Recalled my entire grocery list (15 items) without checking my phone once",
+                    "Successfully multitasked: remembered what I was saying while someone interrupted with a question",
+                    "Gave a 10-minute presentation without notes - kept all key points in working memory",
+                    "Remembered my friend's coffee order from last month when we met up again"
+                ];
+
+                const wmLabRealWorld = JSON.parse(localStorage.getItem('wmLabRealWorld') || '[]');
+                wins.forEach((note, i) => {
+                    wmLabRealWorld.push({
+                        note,
+                        ts: new Date(now - (86400000 * (8 - i)) - (3600000 * i * 2)).toISOString()
+                    });
+                });
+
+                localStorage.setItem('wmLabRealWorld', JSON.stringify(wmLabRealWorld));
+
+                // Add sample profile if missing
+                let profileCreated = false;
+                if (!localStorage.getItem('wmLabProfile')) {
+                    const profile = {
+                        username: 'Test User',
+                        primaryGoal: 'focus',
+                        cognitiveBaseline: {
+                            attention: 72,
+                            verbal: 78,
+                            spatial: 68
+                        },
+                        onboardingComplete: true
+                    };
+                    localStorage.setItem('wmLabProfile', JSON.stringify(profile));
+                    profileCreated = true;
+                }
+
+                // Show success
+                statusDiv.className = 'status success';
+                statusDiv.innerHTML = `
+                    <strong>✅ Sample data added successfully!</strong>
+                    <p style="margin: 8px 0 0 0;">All data has been saved to localStorage. Click "Go to App" to see it in action.</p>
+                `;
+
+                // Show stats
+                statsDiv.style.display = 'block';
+                statsDiv.innerHTML = `
+                    <div><strong>📊 Data Added:</strong></div>
+                    <div>  • N-Back sessions: ${wmLab.nback.length}</div>
+                    <div>  • Span sessions: ${wmLab.span.length}</div>
+                    <div>  • Spatial sessions: ${wmLab.spatial.length}</div>
+                    <div>  • Filter Positive sessions: ${wmLab.filterPos.length}</div>
+                    <div>  • Mental Mult sessions: ${wmLab.mult.length}</div>
+                    <div>  • Real-world wins: ${wmLabRealWorld.length}</div>
+                    ${profileCreated ? '<div>  • Test profile created</div>' : ''}
+                    <div style="margin-top: 12px; color: #7cf6a4;"><strong>Total sessions: ${Object.values(wmLab).flat().length}</strong></div>
+                `;
+
+            } catch (e) {
+                statusDiv.className = 'status';
+                statusDiv.innerHTML = `
+                    <strong>❌ Error adding sample data</strong>
+                    <p style="margin: 8px 0 0 0; color: #ff768b;">${e.message}</p>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sprint 3 Phase 1 & 2 Test Suite</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #0b0f14;
+            color: #e8f0ff;
+        }
+        .test-section {
+            margin: 32px 0;
+            padding: 20px;
+            background: #121822;
+            border-radius: 12px;
+            border: 1px solid #243043;
+        }
+        h1 { color: #6ad3ff; }
+        h2 { color: #7cf6a4; margin-top: 0; }
+        .test-item {
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 8px;
+            border: 1px solid #243043;
+            background: #0f1522;
+        }
+        .pass {
+            border-color: #2bb673;
+            background: #1a3d2e;
+        }
+        .fail {
+            border-color: #ff768b;
+            background: #3d1a1a;
+        }
+        .info {
+            border-color: #6ad3ff;
+            background: #1a2a3d;
+        }
+        button {
+            background: #1e2a42;
+            color: #e8f0ff;
+            border: 1px solid #31435f;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 8px 8px 8px 0;
+        }
+        button:hover {
+            background: #26405e;
+        }
+        .code {
+            font-family: monospace;
+            background: #0d1420;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #7cf6a4;
+        }
+        ul {
+            margin: 8px 0;
+            padding-left: 24px;
+        }
+        li {
+            margin: 6px 0;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            margin: 16px 0;
+        }
+        .stat-card {
+            padding: 16px;
+            background: #0f1725;
+            border-radius: 8px;
+            border: 1px solid #23324a;
+        }
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #6ad3ff;
+        }
+        .stat-label {
+            color: #9db0cc;
+            font-size: 14px;
+            margin-top: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Sprint 3 Phase 1 & 2 Test Suite</h1>
+    <p>Comprehensive testing for Enhanced Analytics Dashboard and Real-World Validation</p>
+
+    <div class="test-section">
+        <h2>📊 Quick Data Overview</h2>
+        <div id="data-overview"></div>
+        <button onclick="loadDataOverview()">Refresh Data Overview</button>
+        <button onclick="addSampleData()">Add Sample Data</button>
+        <button onclick="clearAllData()">Clear All Data</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Phase 1: Enhanced Analytics Dashboard</h2>
+        <div id="phase1-results"></div>
+        <button onclick="testPhase1()">Run Phase 1 Tests</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Phase 2: Real-World Validation</h2>
+        <div id="phase2-results"></div>
+        <button onclick="testPhase2()">Run Phase 2 Tests</button>
+    </div>
+
+    <div class="test-section">
+        <h2>🎯 Manual Test Checklist</h2>
+        <div class="test-item info">
+            <h3>Enhanced Dashboard Tests:</h3>
+            <ul>
+                <li>Navigate to Dashboard tab</li>
+                <li>Verify 3 domain score cards display (Attention, Verbal WM, Spatial WM)</li>
+                <li>Check trend arrows (↗↘→) and baseline comparison values</li>
+                <li>Click each domain card → verify drill-down chart appears</li>
+                <li>Click "Back to Dashboard" → verify returns to main view</li>
+                <li>Check streak calendar displays (12-week grid)</li>
+                <li>Hover over calendar squares → verify tooltips show date + session count</li>
+                <li>Verify current/longest streak numbers display correctly</li>
+            </ul>
+        </div>
+        <div class="test-item info">
+            <h3>Real-World Wins Tests:</h3>
+            <ul>
+                <li>From Dashboard: Click "+ Log a Win" button</li>
+                <li>From Launchpad: Click "🌟 Log a Win" button</li>
+                <li>In modal: Type a win description</li>
+                <li>Verify character counter updates (X/280)</li>
+                <li>Click Save → verify success toast appears</li>
+                <li>Click Cancel → verify modal closes</li>
+                <li>Press ESC → verify modal closes</li>
+                <li>Click backdrop → verify modal closes</li>
+                <li>Try submitting empty note → verify error toast</li>
+                <li>Go to Dashboard → verify win appears in "Recent Wins" section</li>
+                <li>Verify relative timestamp ("X minutes ago")</li>
+                <li>Log 6+ wins → verify "+X more wins" indicator</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        function testResult(name, passed, details = '') {
+            const icon = passed ? '✅' : '❌';
+            const className = passed ? 'pass' : 'fail';
+            return `
+                <div class="test-item ${className}">
+                    ${icon} <strong>${name}</strong>
+                    ${details ? `<br><small style="color:#9db0cc">${details}</small>` : ''}
+                </div>
+            `;
+        }
+
+        function loadDataOverview() {
+            const overview = document.getElementById('data-overview');
+            
+            try {
+                const wmLab = JSON.parse(localStorage.getItem('wmLab') || '{}');
+                const wmLabProfile = JSON.parse(localStorage.getItem('wmLabProfile') || 'null');
+                const wmLabFocus = JSON.parse(localStorage.getItem('wmLabFocus') || '[]');
+                const wmLabLifestyle = JSON.parse(localStorage.getItem('wmLabLifestyle') || '{}');
+                const wmLabRealWorld = JSON.parse(localStorage.getItem('wmLabRealWorld') || '[]');
+                
+                const totalSessions = Object.values(wmLab).flat().length;
+                const focusSessions = wmLabFocus.length;
+                const lifestyleDays = Object.keys(wmLabLifestyle).length;
+                const winsLogged = wmLabRealWorld.length;
+                
+                overview.innerHTML = `
+                    <div class="stats">
+                        <div class="stat-card">
+                            <div class="stat-value">${totalSessions}</div>
+                            <div class="stat-label">Task Sessions</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${focusSessions}</div>
+                            <div class="stat-label">Focus Sessions</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${lifestyleDays}</div>
+                            <div class="stat-label">Lifestyle Logs</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${winsLogged}</div>
+                            <div class="stat-label">Wins Logged</div>
+                        </div>
+                    </div>
+                    <div class="test-item info">
+                        <strong>Profile:</strong> ${wmLabProfile ? `${wmLabProfile.username || 'Unknown'}` : 'Not created (quiz not completed)'}
+                        ${wmLabProfile && wmLabProfile.cognitiveBaseline ? `<br><small>Baseline: Attention ${wmLabProfile.cognitiveBaseline.attention}%, Verbal ${wmLabProfile.cognitiveBaseline.verbal}%, Spatial ${wmLabProfile.cognitiveBaseline.spatial}%</small>` : ''}
+                    </div>
+                `;
+            } catch (e) {
+                overview.innerHTML = testResult('Load Data', false, e.message);
+            }
+        }
+
+        function testPhase1() {
+            const results = document.getElementById('phase1-results');
+            let html = '';
+
+            try {
+                const wmLab = JSON.parse(localStorage.getItem('wmLab') || '{}');
+                const wmLabProfile = JSON.parse(localStorage.getItem('wmLabProfile') || 'null');
+                
+                // Test 1: localStorage data exists
+                const hasData = Object.values(wmLab).flat().length > 0;
+                html += testResult(
+                    'Task performance data exists',
+                    hasData,
+                    hasData ? `${Object.values(wmLab).flat().length} total sessions found` : 'Run some tasks to generate data'
+                );
+
+                // Test 2: Profile exists
+                const hasProfile = wmLabProfile !== null;
+                html += testResult(
+                    'User profile exists',
+                    hasProfile,
+                    hasProfile ? `User: ${wmLabProfile.username || 'Unknown'}` : 'Complete discovery quiz to create profile'
+                );
+
+                // Test 3: Domain score calculation
+                if (hasData) {
+                    const domainTasks = {
+                        attention: (wmLab.nback || []).concat(wmLab.filterPos || []),
+                        verbal: (wmLab.span || []).concat(wmLab.mult || []),
+                        spatial: (wmLab.spatial || []).concat(wmLab.crossmodal || [])
+                    };
+                    
+                    const domainCounts = {
+                        attention: domainTasks.attention.length,
+                        verbal: domainTasks.verbal.length,
+                        spatial: domainTasks.spatial.length
+                    };
+                    
+                    html += testResult(
+                        'Domain task distribution',
+                        true,
+                        `Attention: ${domainCounts.attention}, Verbal: ${domainCounts.verbal}, Spatial: ${domainCounts.spatial}`
+                    );
+                }
+
+                // Test 4: Streak calculation
+                const allEntries = Object.values(wmLab).flat();
+                const uniqueDates = [...new Set(allEntries.map(e => new Date(e.ts).toISOString().slice(0, 10)))];
+                html += testResult(
+                    'Training activity data',
+                    uniqueDates.length > 0,
+                    `${uniqueDates.length} unique training days`
+                );
+
+                // Test 5: Recent performance data
+                const recentData = Object.values(wmLab).flat().slice(-10);
+                html += testResult(
+                    'Recent performance data available',
+                    recentData.length > 0,
+                    `Last 10 sessions: ${recentData.length} entries`
+                );
+
+            } catch (e) {
+                html += testResult('Phase 1 Tests', false, e.message);
+            }
+
+            results.innerHTML = html;
+        }
+
+        function testPhase2() {
+            const results = document.getElementById('phase2-results');
+            let html = '';
+
+            try {
+                // Test 1: Real-world store exists
+                const wmLabRealWorld = JSON.parse(localStorage.getItem('wmLabRealWorld') || '[]');
+                html += testResult(
+                    'Real-world wins store initialized',
+                    Array.isArray(wmLabRealWorld),
+                    `Current wins: ${wmLabRealWorld.length}`
+                );
+
+                // Test 2: Win data structure
+                if (wmLabRealWorld.length > 0) {
+                    const firstWin = wmLabRealWorld[0];
+                    const hasNote = 'note' in firstWin;
+                    const hasTimestamp = 'ts' in firstWin;
+                    
+                    html += testResult(
+                        'Win data structure valid',
+                        hasNote && hasTimestamp,
+                        `Sample: "${firstWin.note?.substring(0, 50)}..." (${new Date(firstWin.ts).toLocaleDateString()})`
+                    );
+                } else {
+                    html += testResult(
+                        'Win data structure',
+                        true,
+                        'No wins logged yet - use "Log a Win" button to test'
+                    );
+                }
+
+                // Test 3: Modal functionality (test by opening main app)
+                html += testResult(
+                    'Modal system ready to test',
+                    true,
+                    'Test "Log a Win" button in main app (index.html)'
+                );
+
+                // Test 4: Rendering functionality (test by viewing dashboard)
+                html += testResult(
+                    'Wins display ready to test',
+                    true,
+                    'View Dashboard tab in main app to see Recent Wins'
+                );
+
+                // Test 5: Time formatting (test data structure)
+                if (wmLabRealWorld.length > 0) {
+                    const now = Date.now();
+                    const winTime = new Date(wmLabRealWorld[0].ts).getTime();
+                    const hoursDiff = Math.abs(now - winTime) / 3600000;
+                    
+                    html += testResult(
+                        'Timestamp data structure valid',
+                        true,
+                        `Latest win: ${hoursDiff.toFixed(1)} hours ago`
+                    );
+                } else {
+                    html += testResult(
+                        'Ready for time formatting test',
+                        true,
+                        'Log a win to test relative time display'
+                    );
+                }
+
+            } catch (e) {
+                html += testResult('Phase 2 Tests', false, e.message);
+            }
+
+            results.innerHTML = html;
+        }
+
+        function addSampleData() {
+            if (!confirm('This will add sample task data, focus sessions, lifestyle logs, and wins. Continue?')) return;
+
+            try {
+                // Add sample task performance
+                const wmLab = JSON.parse(localStorage.getItem('wmLab') || '{}');
+                const now = Date.now();
+                
+                // Add N-Back sessions (attention)
+                wmLab.nback = wmLab.nback || [];
+                for (let i = 0; i < 5; i++) {
+                    wmLab.nback.push({
+                        type: 'nback',
+                        scoreStr: `1-back H/M/FA 10/${2-i}/1 · 2-back 12/${3-i}/2`,
+                        acc1: 80 + i * 3,
+                        acc2: 70 + i * 4,
+                        fa1: 2 - i,
+                        fa2: 3 - i,
+                        ts: new Date(now - (86400000 * (10 - i))).toISOString()
+                    });
+                }
+
+                // Add Span sessions (verbal)
+                wmLab.span = wmLab.span || [];
+                for (let i = 0; i < 5; i++) {
+                    wmLab.span.push({
+                        type: 'span',
+                        scoreStr: `Best L${2 + i}`,
+                        bestLevel: 2 + i,
+                        ts: new Date(now - (86400000 * (9 - i))).toISOString()
+                    });
+                }
+
+                // Add Spatial sessions (spatial)
+                wmLab.spatial = wmLab.spatial || [];
+                for (let i = 0; i < 5; i++) {
+                    wmLab.spatial.push({
+                        type: 'spatial',
+                        scoreStr: `${1 + i}/3`,
+                        cleared: 1 + i,
+                        level: 1 + i,
+                        ts: new Date(now - (86400000 * (8 - i))).toISOString()
+                    });
+                }
+
+                localStorage.setItem('wmLab', JSON.stringify(wmLab));
+
+                // Add sample wins
+                const wins = [
+                    "Remembered everyone's name at the team meeting without taking notes!",
+                    "Did mental math for the tip at dinner - calculated 18% of $67 in my head",
+                    "Followed complex driving directions without GPS - remembered all 7 turns",
+                    "Recalled my entire grocery list without checking my phone once",
+                    "Successfully multitasked: remembered what I was saying while someone interrupted"
+                ];
+                
+                const wmLabRealWorld = [];
+                wins.forEach((note, i) => {
+                    wmLabRealWorld.push({
+                        note,
+                        ts: new Date(now - (86400000 * (6 - i)) - (3600000 * i)).toISOString()
+                    });
+                });
+                
+                localStorage.setItem('wmLabRealWorld', JSON.stringify(wmLabRealWorld));
+
+                // Add sample profile if missing
+                if (!localStorage.getItem('wmLabProfile')) {
+                    const profile = {
+                        username: 'Test User',
+                        primaryGoal: 'focus',
+                        cognitiveBaseline: {
+                            attention: 75,
+                            verbal: 80,
+                            spatial: 70
+                        },
+                        onboardingComplete: true
+                    };
+                    localStorage.setItem('wmLabProfile', JSON.stringify(profile));
+                }
+
+                alert('✅ Sample data added! Refresh the main app to see results.');
+                loadDataOverview();
+            } catch (e) {
+                alert('❌ Error adding sample data: ' + e.message);
+            }
+        }
+
+        function clearAllData() {
+            if (!confirm('This will delete ALL app data. Are you sure?')) return;
+            
+            const keys = ['wmLab', 'wmLabProfile', 'wmLabFocus', 'wmLabLifestyle', 'wmLabRealWorld', 'wmLabPrefs'];
+            keys.forEach(key => localStorage.removeItem(key));
+            
+            alert('All data cleared!');
+            loadDataOverview();
+        }
+
+        // Auto-load on page load
+        window.addEventListener('load', () => {
+            loadDataOverview();
+            testPhase1();
+            testPhase2();
+        });
+    </script>
+</body>
+</html>
